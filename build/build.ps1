@@ -6,17 +6,16 @@ $ErrorActionPreference = 'Stop'
 & "$PSScriptRoot/set-env.ps1"
 
 ##
-# Q# compiler projects
+# Q# compiler and Sdk tools
 ##
 
 function Build-One {
     param(
-        [string]$action,
         [string]$project
     );
 
-    Write-Host "##[info]Building $project ($action)..."
-    dotnet $action (Join-Path $PSScriptRoot $project) `
+    Write-Host "##[info]Building $project ..."
+    dotnet build (Join-Path $PSScriptRoot $project) `
         -c $Env:BUILD_CONFIGURATION `
         -v $Env:BUILD_VERBOSITY `
         /property:DefineConstants=$Env:ASSEMBLY_CONSTANTS `

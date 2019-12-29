@@ -10,6 +10,28 @@ Write-Host "PowerShell version: $($PSVersionTable.PSVersion)"
 ##
 # Q# compiler
 ##
+
+function Publish-One {
+    param(
+        [string]$project
+    );
+
+    Write-Host "##[info]Publishing $project ..."
+    dotnet publish (Join-Path $PSScriptRoot $project) `
+        -c $Env:BUILD_CONFIGURATION `
+        -v $Env:BUILD_VERBOSITY `
+        /property:DefineConstants=$Env:ASSEMBLY_CONSTANTS `
+        /property:Version=$Env:ASSEMBLY_VERSION
+
+    if  ($LastExitCode -ne 0) {
+        Write-Host "##vso[task.logissue type=error;]Failed to publish $project."
+        $script:all_ok = $False
+    }
+}
+
+Publish-One '../src/QsCompiler/CommandLineTool/CommandLineTool.csproj'
+Publish-One '../src/QuantumSdk/Tools/BuildConfiguration/BuildConfiguration.csproj'
+
 function Pack-One() {
     param(
         [string]$project, 
@@ -24,7 +46,7 @@ function Pack-One() {
         -Verbosity detailed `
         $include_references
 
-    if  ($LastExitCode -ne 0) {
+    if ($LastExitCode -ne 0) {
         Write-Host "##vso[task.logissue type=error;]Failed to pack $project."
         $script:all_ok = $False
     }
