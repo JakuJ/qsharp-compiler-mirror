@@ -17,7 +17,7 @@
 
   <!-- Q# source files included by default. -->
   <ItemGroup>
-    <QsharpCompile Include="**/*.qs" Exclude="obj/**" />
+    <QsharpCompile Include="**\*.qs" Exclude="obj\**" />
   </ItemGroup>
 
   <!-- Q# package references included by default. -->
