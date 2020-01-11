@@ -73,6 +73,10 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
             if (logger == null) throw new ArgumentNullException(nameof(logger));
 
             var usesPlugins = options.Plugins != null && options.Plugins.Any();
+            var rewriteSteps = options.Plugins?.Select(step => (step, (string)null)) ?? ImmutableArray<(string, string)>.Empty;
+
+            Console.WriteLine($"===q#.rw=== has rewrite steps: {rewriteSteps.Any()} ");
+
             var loadOptions = new CompilationLoader.Configuration
             {
                 ProjectName = options.ProjectName,
@@ -82,7 +86,7 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
                 DocumentationOutputFolder = options.DocFolder,
                 BuildOutputFolder = options.OutputFolder ?? (usesPlugins ? "." : null),
                 DllOutputPath = options.EmitDll ? " " : null, // set to e.g. an empty space to generate the dll in the same location as the .bson file
-                RewriteSteps = options.Plugins?.Select(step => (step, (string)null)) ?? ImmutableArray<(string, string)>.Empty,
+                RewriteSteps = rewriteSteps,
                 EnableAdditionalChecks = false // todo: enable debug mode?
             }; 
 

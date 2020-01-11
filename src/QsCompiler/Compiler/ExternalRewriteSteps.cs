@@ -125,10 +125,16 @@ namespace Microsoft.Quantum.QsCompiler
         internal static ImmutableArray<LoadedStep> Load(CompilationLoader.Configuration config,
             Action<Diagnostic> onDiagnostic = null, Action<Exception> onException = null)
         {
-            if (config.RewriteSteps == null) return ImmutableArray<LoadedStep>.Empty;
+            if (config.RewriteSteps == null)
+            {
+                Console.WriteLine("===q#.rw=== NO REWRITE STEPS!");
+                return ImmutableArray<LoadedStep>.Empty;
+            }
             static Assembly LoadAssembly(string path) => CompilationLoader.LoadAssembly?.Invoke(path) ?? Assembly.LoadFrom(path);
             Uri WithFullPath(string file)
             {
+                Console.WriteLine($"===q#.rw=== PLUGIN DLL: {file}");
+
                 try
                 {
                     return String.IsNullOrWhiteSpace(file) ? null : new Uri(Path.GetFullPath(file));
@@ -142,6 +148,7 @@ namespace Microsoft.Quantum.QsCompiler
             }
 
             var specifiedPluginDlls = config.RewriteSteps.Select(step => (WithFullPath(step.Item1), step.Item2)).Where(step => step.Item1 != null).ToList();
+            
             var (foundDlls, notFoundDlls) = specifiedPluginDlls.Partition(step => File.Exists(step.Item1.LocalPath));
             foreach (var file in notFoundDlls.Select(step => step.Item1).Distinct())
             {
