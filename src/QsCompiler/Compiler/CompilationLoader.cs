@@ -803,6 +803,8 @@ namespace Microsoft.Quantum.QsCompiler
             string FullDirectoryName(string dir) =>
                 Path.GetFullPath(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar);
 
+            Console.WriteLine($"Generating {fileId.Value} into {outputFolder}");
+
             outputFolder = String.IsNullOrWhiteSpace(outputFolder) ? "." : outputFolder;
             var outputUri = new Uri(FullDirectoryName(outputFolder));
             var currentDir = new Uri(FullDirectoryName("."));
@@ -816,6 +818,7 @@ namespace Microsoft.Quantum.QsCompiler
             if (content == null) return targetFile;
             if (!Directory.Exists(fileDir)) Directory.CreateDirectory(fileDir);
             File.WriteAllText(targetFile, content);
+            Console.WriteLine($"Generated {targetFile}");
             return targetFile;
         }
     }
