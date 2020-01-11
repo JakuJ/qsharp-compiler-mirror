@@ -101,8 +101,12 @@
     <!-- configure the dll built by the C# compiler -->
     <ItemGroup>
       <EmbeddedResource Include="$(GeneratedFilesOutputPath)$(PathCompatibleAssemblyName).bson" LogicalName="__qsharp_data__.bson" Visible="false" />
-      <Compile Condition="$(CsharpGeneration)" Include="$(GeneratedFilesOutputPath)**\*.g.cs" Exclude="@(Compile)" AutoGen="true" />
+      <QSCG Include="$(GeneratedFilesOutputPath)**/*.g.cs" />
+      <QSCB Include="@(Compile)" />
+      <Compile Condition="$(CsharpGeneration)" Include="$(GeneratedFilesOutputPath)**/*.g.cs" Exclude="@(Compile)" AutoGen="true" />
     </ItemGroup>
+    <Message Importance="high"
+      Text="===q#=== CsharpGeneration='$(CsharpGeneration)' Before='@(QSCB)' Generated='@(QSCG)' Compile='@(Compile)'" />
   </Target>   
 
 
