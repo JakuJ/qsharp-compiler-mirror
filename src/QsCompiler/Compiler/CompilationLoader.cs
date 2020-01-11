@@ -429,10 +429,15 @@ namespace Microsoft.Quantum.QsCompiler
             }
 
             // invoking rewrite steps in external dlls
-
+            Console.WriteLine("===q#.rw=== Starting to run plugins");
             for (int i = 0; i < this.ExternalRewriteSteps.Length; i++)
             {
-                if (this.CompilationOutput == null) continue;
+                Console.WriteLine($"===q#.rw[{i}]=== Running {this.ExternalRewriteSteps[i]?.Name}");
+                if (this.CompilationOutput == null)
+                {
+                    Console.WriteLine($"===q#.rw[{i}]=== skipping...");
+                    continue;
+                }
                 var executed = this.ExecuteRewriteStep(this.ExternalRewriteSteps[i], this.CompilationOutput, out var transformed);
                 if (executed == Status.Succeeded) this.CompilationOutput = transformed;
                 this.CompilationStatus.LoadedRewriteSteps[i] = executed;

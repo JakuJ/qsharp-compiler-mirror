@@ -156,9 +156,15 @@ namespace Microsoft.Quantum.QsCompiler
                 Diagnostic LoadWarning(WarningCode code, params string[] args) => Warnings.LoadWarning(code, args, ProjectManager.MessageSource(target));
                 try
                 {
+                    Console.WriteLine($"===q#.rw=== Analyzing assembly {target.LocalPath}");
+
                     var typesInAssembly = LoadAssembly(target.LocalPath).GetTypes();
                     var exactInterfaceMatches = typesInAssembly.Where(t => typeof(IRewriteStep).IsAssignableFrom(t)); // inherited interface is defined in this exact dll
-                    if (exactInterfaceMatches.Any()) relevantTypes.AddRange(exactInterfaceMatches);
+                    if (exactInterfaceMatches.Any())
+                    {
+                        Console.WriteLine($"===q#.rw=== Found IRewriteSteps in -1- ({target.LocalPath})");
+                        relevantTypes.AddRange(exactInterfaceMatches);
+                    }
                     else
                     {
                         // If the inherited interface is defined in older compiler version, then we can attempt to load the step anyway via reflection. 
@@ -168,8 +174,13 @@ namespace Microsoft.Quantum.QsCompiler
                         var possibleInterfaceMatches = typesInAssembly.Where(IsPossibleMatch);
                         if (possibleInterfaceMatches.Any())
                         {
+                            Console.WriteLine($"===q#.rw=== Found IRewriteSteps in -2- ({target.LocalPath})");
                             var reloadedTypes = Assembly.LoadFrom(target.LocalPath).GetTypes();
                             relevantTypes.AddRange(reloadedTypes.Where(IsPossibleMatch));
+                        } 
+                        else
+                        {
+                            Console.WriteLine($"===q#.rw=== DIDN'T FIND IRewriteSteps ({target.LocalPath})");
                         }
                     }
                 }
@@ -186,14 +197,16 @@ namespace Microsoft.Quantum.QsCompiler
                 var loadedSteps = new List<LoadedStep>();
                 foreach (var type in relevantTypes)
                 {
-                    try 
+                    try
                     {
+                        Console.WriteLine($"===q#.rw=== Loading IRewriteSteps {type.FullName}");
                         var instance = Activator.CreateInstance(type);
                         if (instance is IRewriteStep step)
                         {
                             loadedSteps.Add(new LoadedStep(step, typeof(IRewriteStep), target));
                             continue;
                         }
+                        Console.WriteLine($"===q#.rw=== IT WAS NOT IRewriteStep {type.FullName}");
 
                         try // we also try to load rewrite steps that have been compiled against a different compiler version
                         {
@@ -228,6 +241,7 @@ namespace Microsoft.Quantum.QsCompiler
                 loadedSteps.Sort((fst, snd) => snd.Priority - fst.Priority);
                 rewriteSteps.AddRange(loadedSteps);
             }
+            Console.WriteLine($"===q#.rw=== ALL STEPS: {string.Join(",", rewriteSteps.Select(s => s.Name))}");
             return rewriteSteps.ToImmutableArray();
         }
     }
