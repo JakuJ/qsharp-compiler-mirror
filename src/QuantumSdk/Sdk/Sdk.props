@@ -28,17 +28,17 @@
   <!-- Q# package references included by default. -->
   <ItemGroup>
     <!-- Packages and libraries included for all execution targets. -->
-    <PackageReference Condition="$(IncludeQsharpCorePackages)" Include="Microsoft.Quantum.QSharp.Core" Version="0.10.2001.2831" />
-    <PackageReference Condition="$(IncludeQsharpCorePackages)" Include="Microsoft.Quantum.Standard" Version="0.10.2001.2831" />
+    <PackageReference Condition="$(IncludeQsharpCorePackages)" Include="Microsoft.Quantum.QSharp.Core" Version="0.10.44243-beta" />
+    <PackageReference Condition="$(IncludeQsharpCorePackages)" Include="Microsoft.Quantum.Standard" Version="0.10.44243-beta" />
     <!-- Packages included for specific execution targets. -->
-    <PackageReference Condition="'$(ResolvedQsharpExecutionTarget)' == 'SimulatorBackend'" Include="Microsoft.Quantum.Simulators" Version="0.10.2001.2831" IsImplicitlyDefined="$(CsharpGeneration)" />
+    <PackageReference Condition="'$(ResolvedQsharpExecutionTarget)' == 'SimulatorBackend'" Include="Microsoft.Quantum.Simulators" Version="0.10.44243-beta" IsImplicitlyDefined="$(CsharpGeneration)" />
   </ItemGroup>
 
   <!-- Packages containing rewrite steps that are executed during compilation. -->
   <ItemGroup>
-    <PackageReference Condition="$(CsharpGeneration)" Include="Microsoft.Quantum.Runtime.Core" Version="0.10.2001.2831" IsImplicitlyDefined="true" />
+    <PackageReference Condition="$(CsharpGeneration)" Include="Microsoft.Quantum.Runtime.Core" Version="0.10.44243-beta" IsImplicitlyDefined="true" />
     <PackageReference Condition="$(CsharpGeneration)" PrivateAssets="All"
-      Include="Microsoft.Quantum.CsharpGeneration" Version="0.10.2001.2831" IsImplicitlyDefined="true" 
+      Include="Microsoft.Quantum.CsharpGeneration" Version="0.10.44243-beta" IsImplicitlyDefined="true" 
       IsQscReference ="true" ExecutionTarget="Any" Priority="-1" />
   </ItemGroup>
 
