@@ -17,6 +17,13 @@
     <UpToDateCheckInput Include="@(QsharpCompile)" /> <!-- ensure that projects are recompiled if a Q# source file is modified -->
   </ItemGroup>
 
+  <!-- Pkg2Proj replaces a PackageReference with a ProjectReference for easy debugging. -->
+  <ItemGroup>
+    <_MissingPkg2Proj Include="@(Pkg2Proj)" Exclude="@(PackageReference)" />
+    <Pkg2Proj Remove="@(_MissingPkg2Proj)" />
+    <PackageReference Remove="@(Pkg2Proj)" />
+    <ProjectReference Include="@(Pkg2Proj -> '%(Proj)')" />
+  </ItemGroup>
 
   <!-- Target used to verify that the specified OutputType is valid. -->
   <Target Name="VerifyOutputType" BeforeTargets="QsharpCompile">
