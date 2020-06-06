@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Quantum.Simulators" Version="0.11.2006.411-beta" />
+    <PackageReference Include="Microsoft.Quantum.Simulators" Version="0.11.2006.509-beta" />
   </ItemGroup>
 
   <ItemGroup>
