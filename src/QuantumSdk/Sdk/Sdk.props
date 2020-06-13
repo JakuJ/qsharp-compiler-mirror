@@ -11,9 +11,9 @@
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk"/>
   <Import Project="$(MSBuildThisFileDirectory)../ProjectSystem/ProjectSystem.props"/>
 
-  <!-- Automatically import a QDKDev.props file if it exists in a parent folder. -->
-  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), QDKDev.props))\QDKDev.props" 
-    Condition=" '$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), QDKDev.props))' != '' " />
+  <!-- Automatically import a QDK-dev.props file if it exists in a parent folder. -->
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), QDK-dev.props))\QDK-dev.props" 
+    Condition=" '$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), QDK-dev.props))' != '' " />
 
   <!-- We want to keep this here as fallback to mitigate issues when loading qsc references. -->
   <PropertyGroup>
