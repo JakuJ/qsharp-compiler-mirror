@@ -489,6 +489,7 @@ namespace Microsoft.Quantum.QsCompiler
             // building the compilation
 
             this.RaiseCompilationTaskStart("OverallCompilation", "Build");
+            Thread.Sleep(100 * 1000);
             this.compilationStatus.Validation = Status.Succeeded;
             var files = CompilationUnitManager.InitializeFileManagers(sourceFiles, null, this.OnCompilerException); // do *not* live track (i.e. use publishing) here!
             var processorArchitecture = this.config.AssemblyConstants?.GetValueOrDefault(AssemblyConstants.ProcessorArchitecture);
