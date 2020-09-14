@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Threading;
 using Microsoft.Quantum.QsCompiler.BuiltInRewriteSteps;
 using Microsoft.Quantum.QsCompiler.CompilationBuilder;
 using Microsoft.Quantum.QsCompiler.DataTypes;
@@ -472,6 +473,7 @@ namespace Microsoft.Quantum.QsCompiler
             this.compilationStatus.PluginLoading = rewriteStepLoading;
 
             this.RaiseCompilationTaskStart("OverallCompilation", "SourcesLoading");
+            Thread.Sleep(10 * 1000);
             var sourceFiles = loadSources?.Invoke(this.LoadSourceFiles)
                 ?? throw new ArgumentNullException("unable to load source files");
             this.RaiseCompilationTaskEnd("OverallCompilation", "SourcesLoading");
