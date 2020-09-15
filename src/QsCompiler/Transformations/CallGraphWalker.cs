@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 using System;
@@ -11,222 +11,334 @@ using Microsoft.Quantum.QsCompiler.SyntaxTokens;
 using Microsoft.Quantum.QsCompiler.SyntaxTree;
 using Microsoft.Quantum.QsCompiler.Transformations.Core;
 
-// ToDo: Review access modifiers
-
 namespace Microsoft.Quantum.QsCompiler.Transformations.CallGraphWalker
 {
     using ExpressionKind = QsExpressionKind<TypedExpression, Identifier, ResolvedType>;
     using TypeParameterResolutions = ImmutableDictionary<Tuple<QsQualifiedName, NonNullable<string>>, ResolvedType>;
 
     /// <summary>
-    /// This transformation walks through the compilation without changing it, building up a call graph as it does.
-    /// This call graph is then returned to the user.
+    /// This transformation walks through the compilation without changing it, populating a given call graph as it does.
     /// </summary>
-    public static class BuildCallGraph
+    internal static class BuildCallGraph
     {
         /// <summary>
-        /// Builds and returns the call graph for the given compilation.
+        /// Populates the given graph based on the given callables.
         /// </summary>
-        public static CallGraph Apply(QsCompilation compilation) =>
-            compilation.EntryPoints.Any()
-            ? ApplyWithEntryPoints(compilation)
-            : ApplyWithoutEntryPoints(compilation);
+        public static void PopulateSimpleGraph(SimpleCallGraph graph, IEnumerable<QsCallable> callables) => SimpleCallGraphWalker.PopulateSimpleGraph(graph, callables);
 
         /// <summary>
-        /// Runs the transformation on the a compilation with entry points. This will trim
-        /// the resulting call graph to only include those callables that are related
-        /// to an entry point.
+        /// Populates the given graph based on the given compilation. This will produce a call graph that
+        /// contains all relationships amongst all callables in the compilation.
         /// </summary>
-        private static CallGraph ApplyWithEntryPoints(QsCompilation compilation)
-        {
-            var walker = new BuildGraph();
-
-            walker.SharedState.IsLimitedToEntryPoints = true;
-            walker.SharedState.RequestStack = new Stack<QsQualifiedName>(compilation.EntryPoints);
-            walker.SharedState.ResolvedCallableSet = new HashSet<QsQualifiedName>();
-            var globals = compilation.Namespaces.GlobalCallableResolutions();
-            while (walker.SharedState.RequestStack.Any())
-            {
-                var currentRequest = walker.SharedState.RequestStack.Pop();
-
-                // If there is a call to an unknown callable, throw exception
-                if (!globals.TryGetValue(currentRequest, out QsCallable currentCallable))
-                {
-                    throw new ArgumentException($"Couldn't find definition for callable: {currentRequest}");
-                }
-
-                // The current request must be added before it is processed to prevent
-                // self-references from duplicating on the stack.
-                walker.SharedState.ResolvedCallableSet.Add(currentRequest);
-
-                walker.Namespaces.OnCallableDeclaration(currentCallable);
-            }
-
-            return walker.SharedState.Graph;
-        }
+        public static void PopulateSimpleGraph(SimpleCallGraph graph, QsCompilation compilation) => SimpleCallGraphWalker.PopulateSimpleGraph(graph, compilation);
 
         /// <summary>
-        /// Runs the transformation on the a compilation without any entry points. This
-        /// will produce a call graph that contains all relationships amongst all callables
-        /// in the compilation.
+        /// Populates the given graph based on the given compilation. Only the compilation's entry points and
+        /// those callables that the entry points depend on will be included in the graph.
         /// </summary>
-        private static CallGraph ApplyWithoutEntryPoints(QsCompilation compilation)
+        public static void PopulateTrimmedGraph(SimpleCallGraph graph, QsCompilation compilation) => SimpleCallGraphWalker.PopulateTrimmedGraph(graph, compilation);
+
+        /// <summary>
+        /// Populates the given graph based on the given compilation. Only the compilation's entry points and
+        /// those callables that the entry points depend on will be included in the graph.
+        /// </summary>
+        public static void PopulateConcreteGraph(ConcreteCallGraph graph, QsCompilation compilation) => ConcreteCallGraphWalker.PopulateConcreteGraph(graph, compilation);
+
+        private static class BaseCallGraphWalker<TGraph, TNode, TEdge>
+            where TGraph : CallGraphBase<TNode, TEdge>
+            where TNode : CallGraphNodeBase
+            where TEdge : CallGraphEdgeBase
         {
-            var walker = new BuildGraph();
-
-            // ToDo: This can be simplified once the OnCompilation method is merged in
-            foreach (var ns in compilation.Namespaces)
+            public abstract class TransformationState
             {
-                walker.Namespaces.OnNamespace(ns);
-            }
+                internal TNode CurrentCallable;
+                internal readonly TGraph Graph;
 
-            return walker.SharedState.Graph;
-        }
+                // The type parameter resolutions of the current expression.
+                internal IEnumerable<TypeParameterResolutions> ExpTypeParamResolutions = new List<TypeParameterResolutions>();
+                internal QsNullable<Position> CurrentStatementOffset;
+                internal QsNullable<DataTypes.Range> CurrentExpressionRange;
+                internal readonly Stack<TNode> RequestStack = new Stack<TNode>(); // Used to keep track of the nodes that still need to be walked by the walker.
+                internal readonly HashSet<TNode> ResolvedNodeSet = new HashSet<TNode>(); // Used to keep track of the nodes that have already been walked by the walker.
 
-        private class BuildGraph : SyntaxTreeTransformation<TransformationState>
-        {
-            public BuildGraph() : base(new TransformationState())
-            {
-                this.Namespaces = new NamespaceTransformation(this);
-                this.Statements = new StatementTransformation<TransformationState>(this, TransformationOptions.NoRebuild);
-                this.StatementKinds = new StatementKindTransformation<TransformationState>(this, TransformationOptions.NoRebuild);
-                this.Expressions = new ExpressionTransformation(this);
-                this.ExpressionKinds = new ExpressionKindTransformation(this);
-                this.Types = new TypeTransformation<TransformationState>(this, TransformationOptions.Disabled);
-            }
-        }
-
-        private class TransformationState
-        {
-            internal bool IsInCall = false;
-            internal bool HasAdjointDependency = false;
-            internal bool HasControlledDependency = false;
-            internal QsSpecialization CurrentSpecialization;
-            internal CallGraph Graph = new CallGraph();
-            internal IEnumerable<TypeParameterResolutions> TypeParameterResolutions = new List<TypeParameterResolutions>();
-
-            // Flag indicating if the call graph is being limited to only include callables that are related to entry points.
-            internal bool IsLimitedToEntryPoints = false;
-            // RequestStack and ResolvedCallableSet are not used if IsLimitedToEntryPoints is false.
-            internal Stack<QsQualifiedName> RequestStack = null; // Used to keep track of the callables that still need to be walked by the walker.
-            internal HashSet<QsQualifiedName> ResolvedCallableSet = null; // Used to keep track of the callables that have already been walked by the walker.
-        }
-
-        private class NamespaceTransformation : NamespaceTransformation<TransformationState>
-        {
-            public NamespaceTransformation(SyntaxTreeTransformation<TransformationState> parent) : base(parent, TransformationOptions.NoRebuild)
-            {
-            }
-
-            public override QsSpecialization OnSpecializationDeclaration(QsSpecialization spec)
-            {
-                this.SharedState.CurrentSpecialization = spec;
-                return base.OnSpecializationDeclaration(spec);
-            }
-        }
-
-        private class ExpressionTransformation : ExpressionTransformation<TransformationState>
-        {
-            public ExpressionTransformation(SyntaxTreeTransformation<TransformationState> parent) : base(parent, TransformationOptions.NoRebuild)
-            {
-            }
-
-            public override TypedExpression OnTypedExpression(TypedExpression ex)
-            {
-                if (ex.TypeParameterResolutions.Any())
+                internal TransformationState(TGraph graph)
                 {
-                    this.SharedState.TypeParameterResolutions = this.SharedState.TypeParameterResolutions.Prepend(ex.TypeParameterResolutions);
+                    this.Graph = graph;
                 }
-                return base.OnTypedExpression(ex);
+
+                /// <summary>
+                /// Get the array of type parameter resolutions for AddDependency to process.
+                /// </summary>
+                protected abstract TypeParameterResolutions[] GetTypeParamResolutions();
+
+                /// <summary>
+                /// Adds an edge from the current caller to the called node to the call graph.
+                /// </summary>
+                protected abstract void PushEdge(QsQualifiedName calledName, TypeParameterResolutions typeParamRes, DataTypes.Range referenceRange);
+
+                /// <summary>
+                /// Adds dependency to the graph from the current callable to the callable referenced by the given identifier.
+                /// </summary>
+                internal void AddDependency(QsQualifiedName identifier)
+                {
+                    var combination = new TypeResolutionCombination(this.GetTypeParamResolutions());
+                    var typeRes = combination.CombinedResolutionDictionary.FilterByOrigin(identifier);
+                    this.ExpTypeParamResolutions = new List<TypeParameterResolutions>();
+
+                    var referenceRange = DataTypes.Range.Zero;
+                    if (this.CurrentStatementOffset.IsValue
+                        && this.CurrentExpressionRange.IsValue)
+                    {
+                        referenceRange = this.CurrentStatementOffset.Item + this.CurrentExpressionRange.Item;
+                    }
+
+                    this.PushEdge(identifier, typeRes, referenceRange);
+                }
+            }
+
+            public class StatementWalker<TState> : StatementTransformation<TState>
+                where TState : TransformationState
+            {
+                public StatementWalker(SyntaxTreeTransformation<TState> parent) : base(parent, TransformationOptions.NoRebuild)
+                {
+                }
+
+                public override QsStatement OnStatement(QsStatement stm)
+                {
+                    this.SharedState.CurrentStatementOffset = stm.Location.IsValue
+                        ? QsNullable<Position>.NewValue(stm.Location.Item.Offset)
+                        : QsNullable<Position>.Null;
+                    return base.OnStatement(stm);
+                }
+            }
+
+            public class ExpressionWalker<TState> : ExpressionTransformation<TState>
+                where TState : TransformationState
+            {
+                public ExpressionWalker(SyntaxTreeTransformation<TState> parent) : base(parent, TransformationOptions.NoRebuild)
+                {
+                }
+
+                public override TypedExpression OnTypedExpression(TypedExpression ex)
+                {
+                    var contextRange = this.SharedState.CurrentExpressionRange;
+                    this.SharedState.CurrentExpressionRange = ex.Range;
+
+                    if (ex.TypeParameterResolutions.Any())
+                    {
+                        this.SharedState.ExpTypeParamResolutions = this.SharedState.ExpTypeParamResolutions.Prepend(ex.TypeParameterResolutions);
+                    }
+                    var rtrn = base.OnTypedExpression(ex);
+
+                    this.SharedState.CurrentExpressionRange = contextRange;
+
+                    return rtrn;
+                }
+            }
+
+            public class ExpressionKindWalker<TState> : ExpressionKindTransformation<TState>
+                where TState : TransformationState
+            {
+                public ExpressionKindWalker(SyntaxTreeTransformation<TState> parent) : base(parent, TransformationOptions.NoRebuild)
+                {
+                }
+
+                public override ExpressionKind OnIdentifier(Identifier sym, QsNullable<ImmutableArray<ResolvedType>> tArgs)
+                {
+                    if (sym is Identifier.GlobalCallable global)
+                    {
+                        this.SharedState.AddDependency(global.Item);
+                    }
+
+                    return ExpressionKind.InvalidExpr;
+                }
             }
         }
 
-        private class ExpressionKindTransformation : ExpressionKindTransformation<TransformationState>
+        private static class SimpleCallGraphWalker
         {
-            public ExpressionKindTransformation(SyntaxTreeTransformation<TransformationState> parent) : base(parent, TransformationOptions.NoRebuild)
+            /// <summary>
+            /// Populates the given graph based on the given callables.
+            /// </summary>
+            public static void PopulateSimpleGraph(SimpleCallGraph graph, IEnumerable<QsCallable> callables)
             {
-            }
-
-            public override ExpressionKind OnCallLikeExpression(TypedExpression method, TypedExpression arg)
-            {
-                var contextInCall = this.SharedState.IsInCall;
-                this.SharedState.IsInCall = true;
-                this.Expressions.OnTypedExpression(method);
-                this.SharedState.IsInCall = contextInCall;
-                this.Expressions.OnTypedExpression(arg);
-                return ExpressionKind.InvalidExpr;
-            }
-
-            public override ExpressionKind OnAdjointApplication(TypedExpression ex)
-            {
-                this.SharedState.HasAdjointDependency = !this.SharedState.HasAdjointDependency;
-                var result = base.OnAdjointApplication(ex);
-                this.SharedState.HasAdjointDependency = !this.SharedState.HasAdjointDependency;
-                return result;
-            }
-
-            public override ExpressionKind OnControlledApplication(TypedExpression ex)
-            {
-                var contextControlled = this.SharedState.HasControlledDependency;
-                this.SharedState.HasControlledDependency = true;
-                var result = base.OnControlledApplication(ex);
-                this.SharedState.HasControlledDependency = contextControlled;
-                return result;
-            }
-
-            public override ExpressionKind OnIdentifier(Identifier sym, QsNullable<ImmutableArray<ResolvedType>> tArgs)
-            {
-                if (sym is Identifier.GlobalCallable global)
+                var walker = new BuildGraph(graph);
+                foreach (var callable in callables)
                 {
-                    // Type arguments need to be resolved for the whole expression to be accurate
-                    // ToDo: this needs adaption if we want to support type specializations
-                    var typeArgs = QsNullable<ImmutableArray<ResolvedType>>.Null;
+                    walker.Namespaces.OnCallableDeclaration(callable);
+                }
+            }
 
-                    var combination = new TypeResolutionCombination(this.SharedState.TypeParameterResolutions.ToArray());
-                    var typeParamRes = combination.CombinedResolutionDictionary.FilterByOrigin(global.Item);
-                    this.SharedState.TypeParameterResolutions = new List<TypeParameterResolutions>();
+            /// <summary>
+            /// Populates the given graph based on the given compilation. This will produce a call graph that
+            /// contains all relationships amongst all callables in the compilation.
+            /// </summary>
+            public static void PopulateSimpleGraph(SimpleCallGraph graph, QsCompilation compilation)
+            {
+                var walker = new BuildGraph(graph);
+                walker.OnCompilation(compilation);
+            }
 
-                    if (this.SharedState.IsInCall)
+            /// <summary>
+            /// Populates the given graph based on the given compilation. Only the compilation's entry points and
+            /// those callables that the entry points depend on will be included in the graph.
+            /// </summary>
+            public static void PopulateTrimmedGraph(SimpleCallGraph graph, QsCompilation compilation)
+            {
+                var walker = new BuildGraph(graph);
+                var entryPointNodes = compilation.EntryPoints.Select(name => new SimpleCallGraphNode(name));
+                walker.SharedState.WithTrimming = true;
+                foreach (var entryPoint in entryPointNodes)
+                {
+                    // Make sure all the entry points are added to the graph
+                    walker.SharedState.Graph.AddNode(entryPoint);
+                    walker.SharedState.RequestStack.Push(entryPoint);
+                }
+
+                var globals = compilation.Namespaces.GlobalCallableResolutions();
+                while (walker.SharedState.RequestStack.TryPop(out var currentRequest))
+                {
+                    // If there is a call to an unknown callable, throw exception
+                    if (!globals.TryGetValue(currentRequest.CallableName, out QsCallable currentCallable))
                     {
-                        var kind = QsSpecializationKind.QsBody;
-                        if (this.SharedState.HasAdjointDependency && this.SharedState.HasControlledDependency)
-                        {
-                            kind = QsSpecializationKind.QsControlledAdjoint;
-                        }
-                        else if (this.SharedState.HasAdjointDependency)
-                        {
-                            kind = QsSpecializationKind.QsAdjoint;
-                        }
-                        else if (this.SharedState.HasControlledDependency)
-                        {
-                            kind = QsSpecializationKind.QsControlled;
-                        }
-
-                        this.SharedState.Graph.AddDependency(this.SharedState.CurrentSpecialization, global.Item, kind, typeArgs, typeParamRes);
-                    }
-                    else
-                    {
-                        // The callable is being used in a non-call context, such as being
-                        // assigned to a variable or passed as an argument to another callable,
-                        // which means it could get a functor applied at some later time.
-                        // We're conservative and add all 4 possible kinds.
-                        this.SharedState.Graph.AddDependency(this.SharedState.CurrentSpecialization, global.Item, QsSpecializationKind.QsBody, typeArgs, typeParamRes);
-                        this.SharedState.Graph.AddDependency(this.SharedState.CurrentSpecialization, global.Item, QsSpecializationKind.QsControlled, typeArgs, typeParamRes);
-                        this.SharedState.Graph.AddDependency(this.SharedState.CurrentSpecialization, global.Item, QsSpecializationKind.QsAdjoint, typeArgs, typeParamRes);
-                        this.SharedState.Graph.AddDependency(this.SharedState.CurrentSpecialization, global.Item, QsSpecializationKind.QsControlledAdjoint, typeArgs, typeParamRes);
+                        throw new ArgumentException($"Couldn't find definition for callable: {currentRequest.CallableName}");
                     }
 
+                    // The current request must be added before it is processed to prevent
+                    // self-references from duplicating on the stack.
+                    walker.SharedState.ResolvedNodeSet.Add(currentRequest);
+                    walker.SharedState.CurrentCallable = currentRequest;
+                    walker.Namespaces.OnCallableDeclaration(currentCallable);
+                }
+            }
+
+            private class BuildGraph : SyntaxTreeTransformation<TransformationState>
+            {
+                public BuildGraph(SimpleCallGraph graph) : base(new TransformationState(graph))
+                {
+                    this.Namespaces = new NamespaceWalker(this);
+                    this.Statements = new BaseCallGraphWalker<SimpleCallGraph, SimpleCallGraphNode, SimpleCallGraphEdge>.StatementWalker<TransformationState>(this);
+                    this.StatementKinds = new StatementKindTransformation<TransformationState>(this, TransformationOptions.NoRebuild);
+                    this.Expressions = new BaseCallGraphWalker<SimpleCallGraph, SimpleCallGraphNode, SimpleCallGraphEdge>.ExpressionWalker<TransformationState>(this);
+                    this.ExpressionKinds = new BaseCallGraphWalker<SimpleCallGraph, SimpleCallGraphNode, SimpleCallGraphEdge>.ExpressionKindWalker<TransformationState>(this);
+                    this.Types = new TypeTransformation<TransformationState>(this, TransformationOptions.Disabled);
+                }
+            }
+
+            private class TransformationState : BaseCallGraphWalker<SimpleCallGraph, SimpleCallGraphNode, SimpleCallGraphEdge>.TransformationState
+            {
+                // Flag indicating if the call graph is being limited to only include callables that are related to entry points.
+                internal bool WithTrimming = false;
+
+                internal TransformationState(SimpleCallGraph graph) : base(graph)
+                {
+                }
+
+                /// <inheritdoc/>
+                protected override TypeParameterResolutions[] GetTypeParamResolutions() => this.ExpTypeParamResolutions.ToArray();
+
+                /// <inheritdoc/>
+                protected override void PushEdge(QsQualifiedName calledName, TypeParameterResolutions edgeTypeParamRes, DataTypes.Range referenceRange)
+                {
+                    var called = new SimpleCallGraphNode(calledName);
+                    this.Graph.AddDependency(this.CurrentCallable, called, edgeTypeParamRes, referenceRange);
                     // If we are not processing all elements, then we need to keep track of what elements
                     // have been processed, and which elements still need to be processed.
-                    if (this.SharedState.IsLimitedToEntryPoints
-                        && !this.SharedState.RequestStack.Contains(global.Item)
-                        && !this.SharedState.ResolvedCallableSet.Contains(global.Item))
+                    if (this.WithTrimming
+                        && !this.RequestStack.Contains(called)
+                        && !this.ResolvedNodeSet.Contains(called))
                     {
-                        this.SharedState.RequestStack.Push(global.Item);
+                        this.RequestStack.Push(called);
                     }
                 }
+            }
 
-                return ExpressionKind.InvalidExpr;
+            private class NamespaceWalker : NamespaceTransformation<TransformationState>
+            {
+                public NamespaceWalker(SyntaxTreeTransformation<TransformationState> parent) : base(parent, TransformationOptions.NoRebuild)
+                {
+                }
+
+                public override QsCallable OnCallableDeclaration(QsCallable c)
+                {
+                    if (!this.SharedState.WithTrimming)
+                    {
+                        var node = new SimpleCallGraphNode(c.FullName);
+                        this.SharedState.CurrentCallable = node;
+                        this.SharedState.Graph.AddNode(node);
+                    }
+                    return base.OnCallableDeclaration(c);
+                }
+            }
+        }
+
+        private static class ConcreteCallGraphWalker
+        {
+            /// <summary>
+            /// Populates the given graph based on the given compilation. Only the compilation's entry points and
+            /// those callables that the entry points depend on will be included in the graph.
+            /// </summary>
+            public static void PopulateConcreteGraph(ConcreteCallGraph graph, QsCompilation compilation)
+            {
+                var walker = new BuildGraph(graph);
+                var entryPointNodes = compilation.EntryPoints.Select(name => new ConcreteCallGraphNode(name, TypeParameterResolutions.Empty));
+                foreach (var entryPoint in entryPointNodes)
+                {
+                    // Make sure all the entry points are added to the graph
+                    walker.SharedState.Graph.AddNode(entryPoint);
+                    walker.SharedState.RequestStack.Push(entryPoint);
+                }
+
+                var globals = compilation.Namespaces.GlobalCallableResolutions();
+                while (walker.SharedState.RequestStack.TryPop(out var currentRequest))
+                {
+                    // If there is a call to an unknown callable, throw exception
+                    if (!globals.TryGetValue(currentRequest.CallableName, out QsCallable currentCallable))
+                    {
+                        throw new ArgumentException($"Couldn't find definition for callable: {currentRequest.CallableName}");
+                    }
+
+                    // The current request must be added before it is processed to prevent
+                    // self-references from duplicating on the stack.
+                    walker.SharedState.ResolvedNodeSet.Add(currentRequest);
+                    walker.SharedState.CurrentCallable = currentRequest;
+                    walker.Namespaces.OnCallableDeclaration(currentCallable);
+                }
+            }
+
+            private class BuildGraph : SyntaxTreeTransformation<TransformationState>
+            {
+                public BuildGraph(ConcreteCallGraph graph) : base(new TransformationState(graph))
+                {
+                    this.Namespaces = new NamespaceTransformation<TransformationState>(this, TransformationOptions.NoRebuild);
+                    this.Statements = new BaseCallGraphWalker<ConcreteCallGraph, ConcreteCallGraphNode, ConcreteCallGraphEdge>.StatementWalker<TransformationState>(this);
+                    this.StatementKinds = new StatementKindTransformation<TransformationState>(this, TransformationOptions.NoRebuild);
+                    this.Expressions = new BaseCallGraphWalker<ConcreteCallGraph, ConcreteCallGraphNode, ConcreteCallGraphEdge>.ExpressionWalker<TransformationState>(this);
+                    this.ExpressionKinds = new BaseCallGraphWalker<ConcreteCallGraph, ConcreteCallGraphNode, ConcreteCallGraphEdge>.ExpressionKindWalker<TransformationState>(this);
+                    this.Types = new TypeTransformation<TransformationState>(this, TransformationOptions.Disabled);
+                }
+            }
+
+            private class TransformationState : BaseCallGraphWalker<ConcreteCallGraph, ConcreteCallGraphNode, ConcreteCallGraphEdge>.TransformationState
+            {
+                internal TransformationState(ConcreteCallGraph graph) : base(graph)
+                {
+                }
+
+                /// <inheritdoc/>
+                protected override TypeParameterResolutions[] GetTypeParamResolutions() =>
+                    this.ExpTypeParamResolutions.Append(this.CurrentCallable.ParamResolutions).ToArray();
+
+                /// <inheritdoc/>
+                protected override void PushEdge(QsQualifiedName calledName, TypeParameterResolutions nodeTypeParamRes, DataTypes.Range referenceRange)
+                {
+                    var called = new ConcreteCallGraphNode(calledName, nodeTypeParamRes);
+                    this.Graph.AddDependency(this.CurrentCallable, called, referenceRange);
+                    if (!this.RequestStack.Contains(called) && !this.ResolvedNodeSet.Contains(called))
+                    {
+                        this.RequestStack.Push(called);
+                    }
+                }
             }
         }
     }
