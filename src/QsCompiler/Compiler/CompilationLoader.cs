@@ -473,7 +473,7 @@ namespace Microsoft.Quantum.QsCompiler
             this.compilationStatus.PluginLoading = rewriteStepLoading;
 
             this.RaiseCompilationTaskStart("OverallCompilation", "SourcesLoading");
-            Thread.Sleep(10 * 1000);
+            Thread.Sleep(100);
             var sourceFiles = loadSources?.Invoke(this.LoadSourceFiles)
                 ?? throw new ArgumentNullException("unable to load source files");
             this.RaiseCompilationTaskEnd("OverallCompilation", "SourcesLoading");
