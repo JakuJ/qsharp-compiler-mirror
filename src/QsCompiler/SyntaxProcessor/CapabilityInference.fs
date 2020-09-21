@@ -11,7 +11,6 @@ open Microsoft.Quantum.QsCompiler.ReservedKeywords.AssemblyConstants
 open Microsoft.Quantum.QsCompiler.SyntaxTokens
 open Microsoft.Quantum.QsCompiler.SyntaxTree
 open Microsoft.Quantum.QsCompiler.Transformations
-open Microsoft.Quantum.QsCompiler.Transformations.CallGraphWalker
 open Microsoft.Quantum.QsCompiler.Transformations.Core
 open Microsoft.Quantum.QsCompiler.Transformations.SearchAndReplace
 open System.Collections.Generic
@@ -291,7 +290,7 @@ let private callableSourceCapability callable =
 ///
 /// Partially applying the first argument creates a memoized function that caches computed runtime capabilities by
 /// callable name. The memoized function is not thread-safe.
-let private callableDependentCapability (callables : IImmutableDictionary<_, QsCallable>, graph : CallGraph) =
+let private callableDependentCapability (callables : IImmutableDictionary<_, QsCallable>, graph : SimpleCallGraph) =
     // A mapping from callable name to runtime capability based on callable source code patterns and cycles the callable
     // is a member of, but not other dependencies. This is the initial set of capabilities that will be used later.
     let initialCapabilities =
@@ -319,7 +318,8 @@ let private callableDependentCapability (callables : IImmutableDictionary<_, QsC
     let rec specCapability visited (spec : QsSpecialization) =
         let visited = Set.add spec.Parent visited
         let dependencies =
-            graph.GetDirectDependencies spec
+            SimpleCallGraphNode spec.Parent
+            |> graph.GetDirectDependencies
             |> Seq.map (fun group -> group.Key.CallableName)
             |> Set.ofSeq
             |> fun names -> Set.difference names visited
@@ -357,7 +357,7 @@ let private addAttribute callable capability =
 /// callable.
 let InferCapabilities compilation =
     let callables = GlobalCallableResolutions compilation.Namespaces
-    let graph = BuildCallGraph.Apply compilation
+    let graph = SimpleCallGraph compilation
     let transformation = SyntaxTreeTransformation ()
     let callableCapability = callableDependentCapability (callables, graph)
     transformation.Namespaces <- {
