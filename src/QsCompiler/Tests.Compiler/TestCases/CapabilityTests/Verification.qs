@@ -2,16 +2,10 @@
 // Licensed under the MIT License.
 
 /// Test cases for verification of execution target runtime capabilities.
-namespace Microsoft.Quantum.Testing.CapabilityVerification {
-    internal operation X(q : Qubit) : Unit {
-        body intrinsic;
-    }
+namespace Microsoft.Quantum.Testing.Capability {
+    open Microsoft.Quantum.Intrinsic;
 
-    internal operation M(q : Qubit) : Result {
-        body intrinsic;
-    }
-
-    internal operation NoOp() : Unit { }
+    operation NoOp() : Unit { }
 
     function ResultAsBool(result : Result) : Bool {
         return result == Zero ? false | true;
@@ -87,6 +81,18 @@ namespace Microsoft.Quantum.Testing.CapabilityVerification {
             set b = true;
         }
         return b;
+    }
+
+    operation NestedResultIfReturn(b : Bool, result : Result) : Bool {
+        if (b) {
+            if (result == One) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
     }
 
     operation ElifSet(result : Result, flag : Bool) : Bool {
@@ -190,5 +196,44 @@ namespace Microsoft.Quantum.Testing.CapabilityVerification {
 
     function ResultArray(rs : Result[]) : Bool {
         return rs == [One] ? true | false;
+    }
+
+    // Test references to operations in libraries.
+
+    operation CallLibraryGen0(q : Qubit) : Unit {
+        LibraryGen0(q);
+    }
+
+    operation ReferenceLibraryGen0() : (Qubit => Unit) {
+        let f = LibraryGen0;
+        return f;
+    }
+
+    operation CallLibraryGen1(q : Qubit) : Unit {
+        LibraryGen1(q);
+    }
+
+    operation ReferenceLibraryGen1() : (Qubit => Unit) {
+        let f = LibraryGen1;
+        return f;
+    }
+
+    operation CallLibraryUnknown(q : Qubit) : Unit {
+        LibraryUnknown(q);
+    }
+
+    operation ReferenceLibraryUnknown() : (Qubit => Unit) {
+        let f = LibraryUnknown;
+        return f;
+    }
+}
+
+namespace Microsoft.Quantum.Intrinsic {
+    operation X(q : Qubit) : Unit {
+        body intrinsic;
+    }
+
+    operation M(q : Qubit) : Result {
+        body intrinsic;
     }
 }
