@@ -18,7 +18,7 @@ namespace Microsoft.Quantum.QsCompiler.Documentation
     {
         private readonly string syntax;
         private readonly string inputContent;
-        private readonly string outputType;
+        private readonly string? outputType;
         private readonly List<string> functors = new List<string>();
         private readonly QsCallable callable;
 
@@ -109,7 +109,7 @@ namespace Microsoft.Quantum.QsCompiler.Documentation
             rootNode.AddStringMapping(Utils.UidKey, this.uid);
             rootNode.AddStringMapping(Utils.NameKey, this.name);
             rootNode.AddStringMapping(Utils.TypeKey, this.itemType);
-            rootNode.AddStringMapping(Utils.NamespaceKey, this.namespaceName);
+            rootNode.AddStringMapping(Utils.NamespaceKey, this.namespaceName.NamespaceAsUid());
             if (!string.IsNullOrWhiteSpace(this.comments.Documentation))
             {
                 rootNode.AddStringMapping(Utils.SummaryKey, this.comments.Documentation);
