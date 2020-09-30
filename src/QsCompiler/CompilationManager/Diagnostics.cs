@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.Quantum.QsCompiler.CompilationBuilder.DataStructures;
 using Microsoft.Quantum.QsCompiler.DataTypes;
@@ -82,7 +83,7 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
         /// Throws an ArgumentNullException if the Range of the given CompilerDiagnostic is null.
         /// Throws an ArgumentOutOfRangeException if the contained range contains zero or negative entries, or if its Start is bigger than its End.
         /// </summary>
-        internal static Diagnostic Generate(string filename, QsCompilerDiagnostic msg, Position positionOffset = null)
+        internal static Diagnostic Generate(string filename, QsCompilerDiagnostic msg, Position? positionOffset = null)
         {
             if (msg.Range == null)
             {
@@ -103,7 +104,7 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
         public static bool TryGetCode(string str, out int code)
         {
             code = -1;
-            str = str?.Trim();
+            str = str?.Trim() ?? "";
             return !string.IsNullOrWhiteSpace(str) &&
                 str.StartsWith(QsCodePrefix, StringComparison.InvariantCultureIgnoreCase) &&
                 int.TryParse(str.Substring(2), out code);
@@ -129,7 +130,7 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
 
         // warnings 70**
 
-        public static Diagnostic LoadWarning(WarningCode code, IEnumerable<string> args, string source) =>
+        public static Diagnostic LoadWarning(WarningCode code, IEnumerable<string> args, string? source) =>
             new Diagnostic
             {
                 Severity = DiagnosticSeverity.Warning,
@@ -164,7 +165,7 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
 
         // errors 70**
 
-        public static Diagnostic LoadError(ErrorCode code, IEnumerable<string> args, string source) =>
+        public static Diagnostic LoadError(ErrorCode code, IEnumerable<string> args, string? source) =>
             new Diagnostic
             {
                 Severity = DiagnosticSeverity.Error,

@@ -24,6 +24,9 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
         [Verb("format", HelpText = "Generates formatted Q# code.")]
         public class FormatOptions : Options
         {
+            // TODO: Disabling nullable annotations is a workaround for
+            // https://github.com/commandlineparser/commandline/issues/136.
+#nullable disable annotations
             [Usage(ApplicationAlias = "qsCompiler")]
             public static IEnumerable<Example> UsageExamples
             {
@@ -45,6 +48,7 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
                 SetName = CODE_MODE,
                 HelpText = "Destination folder where the formatted files will be generated.")]
             public string OutputFolder { get; set; }
+#nullable restore annotations
         }
 
         /// <summary>
@@ -117,7 +121,7 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
         /// Returns true if the generation succeeded, and false if an exception was thrown.
         /// Throws an ArgumentNullException if the given compilation, the file uri or its absolute path are null.
         /// </summary>
-        private static bool GenerateFormattedQsFile(Compilation compilation, NonNullable<string> fileName, string outputFolder, ILogger logger)
+        private static bool GenerateFormattedQsFile(Compilation compilation, NonNullable<string> fileName, string? outputFolder, ILogger logger)
         {
             if (compilation == null)
             {
@@ -171,10 +175,17 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
                 options.LoadSourcesOrSnippet(logger)(loadFromDisk)
                     .ToImmutableDictionary(entry => entry.Key, entry => UpdateArrayLiterals(entry.Value)); // manually replace array literals
 
-            var loaded = new CompilationLoader(LoadSources, options.References, logger: logger); // no rewrite steps, no generation
+            // no rewrite steps, no generation
+            var loaded =
+                new CompilationLoader(LoadSources, options.References ?? Enumerable.Empty<string>(), logger: logger);
             if (ReturnCode.Status(loaded) == ReturnCode.UNRESOLVED_FILES)
             {
                 return ReturnCode.UNRESOLVED_FILES; // ignore compilation errors
+            }
+            else if (loaded.VerifiedCompilation is null)
+            {
+                logger.Log(ErrorCode.QsGenerationFailed, Enumerable.Empty<string>());
+                return ReturnCode.CODE_GENERATION_ERRORS;
             }
 
             // TODO: a lot of the formatting logic defined here and also in the routines above

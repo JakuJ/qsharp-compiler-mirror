@@ -7,6 +7,8 @@
     <AssemblyName>Microsoft.Quantum.QsCompiler</AssemblyName>
     <RootNamespace>Microsoft.Quantum.QsCompiler</RootNamespace>
     <AssemblyTitle>Microsoft Q# compiler library.</AssemblyTitle>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>nullable</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
