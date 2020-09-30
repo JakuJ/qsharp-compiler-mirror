@@ -294,7 +294,7 @@ let private callableSourceCapability callable =
 ///
 /// Partially applying the first argument creates a memoized function that caches computed runtime capabilities by
 /// callable name. The memoized function is not thread-safe.
-let private callableDependentCapability (callables : IImmutableDictionary<_, _>, graph : SimpleCallGraph) =
+let private callableDependentCapability (callables : IImmutableDictionary<_, _>, graph : CallGraph) =
     // A mapping from callable name to runtime capability based on callable source code patterns and cycles the callable
     // is a member of, but not other dependencies. This is the initial set of capabilities that will be used later.
     let initialCapabilities =
@@ -321,7 +321,7 @@ let private callableDependentCapability (callables : IImmutableDictionary<_, _>,
     let rec dependentCapability visited name =
         let visited = Set.add name visited
         let newDependencies =
-            SimpleCallGraphNode name
+            CallGraphNode name
             |> graph.GetDirectDependencies
             |> Seq.map (fun group -> group.Key.CallableName)
             |> Set.ofSeq
@@ -362,7 +362,7 @@ let private addAttribute callable capability =
 /// callable.
 let InferCapabilities compilation =
     let callables = GlobalCallableResolutions compilation.Namespaces
-    let graph = SimpleCallGraph compilation
+    let graph = CallGraph compilation
     let transformation = SyntaxTreeTransformation ()
     let callableCapability = callableDependentCapability (callables, graph)
     transformation.Namespaces <- {

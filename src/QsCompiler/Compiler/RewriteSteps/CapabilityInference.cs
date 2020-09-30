@@ -17,8 +17,8 @@ namespace Microsoft.Quantum.QsCompiler.BuiltInRewriteSteps
 
         public int Priority { get; } = RewriteStepPriorities.CapabilityInference;
 
-        public IDictionary<string, string> AssemblyConstants { get; } =
-            new Dictionary<string, string>();
+        public IDictionary<string, string?> AssemblyConstants { get; } =
+            new Dictionary<string, string?>();
 
         public IEnumerable<IRewriteStep.Diagnostic> GeneratedDiagnostics { get; } =
             Enumerable.Empty<IRewriteStep.Diagnostic>();
