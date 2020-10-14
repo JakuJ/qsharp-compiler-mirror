@@ -15,7 +15,7 @@ namespace Microsoft.Quantum.QsCompiler
     /// <summary>
     /// Static base class to accumulate the handles to individual syntax tree rewrite steps.
     /// </summary>
-    public static class CodeTransformations
+    public static class CodeTransformation
     {
         /// <summary>
         /// Given the body of an operation, auto-generates the (content of the) adjoint specialization,
