@@ -282,6 +282,7 @@ namespace Microsoft.Quantum.QsCompiler
             internal Status Serialization = Status.NotRun;
             internal Status BinaryFormat = Status.NotRun;
             internal Status DllGeneration = Status.NotRun;
+            internal Status CapabilityInference = Status.NotRun;
             internal Status[] LoadedRewriteSteps;
 
             internal ExecutionStatus(IEnumerable<IRewriteStep> externalRewriteSteps) =>
@@ -305,6 +306,7 @@ namespace Microsoft.Quantum.QsCompiler
                 this.WasSuccessful(options.SerializeSyntaxTree, this.Serialization) &&
                 this.WasSuccessful(options.BuildOutputFolder != null, this.BinaryFormat) &&
                 this.WasSuccessful(options.DllOutputPath != null, this.DllGeneration) &&
+                this.WasSuccessful(!options.IsExecutable, this.CapabilityInference) &&
                 this.LoadedRewriteSteps.All(status => this.WasSuccessful(true, status));
         }
 
@@ -557,6 +559,12 @@ namespace Microsoft.Quantum.QsCompiler
             // executing the specified rewrite steps
 
             var steps = new List<(int, Func<QsCompilation?>)>();
+
+            if (!this.config.IsExecutable)
+            {
+                var capabilityInference = new LoadedStep(new CapabilityInference(), typeof(IRewriteStep), thisDllUri);
+                steps.Add((capabilityInference.Priority, () => this.ExecuteAsAtomicTransformation(capabilityInference, ref this.compilationStatus.CapabilityInference)));
+            }
 
             if (this.config.ConvertClassicalControl)
             {
