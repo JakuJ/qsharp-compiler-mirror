@@ -15,6 +15,10 @@ using Range = Microsoft.Quantum.QsCompiler.DataTypes.Range;
 
 namespace Microsoft.Quantum.QsCompiler.Transformations.FunctorGeneration
 {
+    using ExpressionKind = QsExpressionKind<TypedExpression, Identifier, ResolvedType>;
+    using ResolvedTypeKind = QsTypeKind<ResolvedType, UserDefinedType, QsTypeParameter, CallableInformation>;
+    using TypeArgsResolution = ImmutableArray<Tuple<QsQualifiedName, NonNullable<string>, ResolvedType>>;
+
     /// <summary>
     /// Scope transformation that replaces each operation call within a given scope
     /// with a call to the operation after application of the functor given on initialization.
@@ -85,7 +89,7 @@ namespace Microsoft.Quantum.QsCompiler.Transformations.FunctorGeneration
             }
 
             /// <inheritdoc/>
-            public override QsExpressionKind<TypedExpression, Identifier, ResolvedType> OnOperationCall(TypedExpression method, TypedExpression arg)
+            public override ExpressionKind OnOperationCall(TypedExpression method, TypedExpression arg)
             {
                 if (this.SharedState.FunctorToApply.IsControlled)
                 {
@@ -145,6 +149,125 @@ namespace Microsoft.Quantum.QsCompiler.Transformations.FunctorGeneration
             var innerLoc = this.Transformation.Statements.OnLocation(inner.Location);
             var transformedInner = new QsPositionedBlock(this.Transformation.Statements.OnScope(inner.Body), innerLoc, inner.Comments);
             return QsStatementKind.NewQsConjugation(new QsConjugation(stm.OuterTransformation, transformedInner));
+        }
+    }
+
+    /// <summary>
+    /// Scope transformation that splits any nested operation calls into separate statements so
+    /// that they can be properly reversed. This is necessary to avoid out of order execution of the
+    /// automatically generated adjoint. It is safe to do because an adjointable operation must return
+    /// Unit, so any nested calls can be replaced by Unit and those calls moved to separate,
+    /// ordered statements.
+    /// </summary>
+    public class ExtractNestedOperationCalls
+    : SyntaxTreeTransformation<ExtractNestedOperationCalls.TransformationsState>
+    {
+        public class TransformationsState
+        {
+            /// <summary>
+            /// Accumulates statements that have been lifted from the current statement.
+            /// </summary>
+            public List<QsStatement> AdditionalStatements = new List<QsStatement>();
+
+            public Stack<TypedExpression> CurrentExpression = new Stack<TypedExpression>();
+        }
+
+        public ExtractNestedOperationCalls()
+        : base(new TransformationsState())
+        {
+            this.Statements = new ExtractNestedOperationCalls.StatementTransformation(this);
+            this.Expressions = new ExtractNestedOperationCalls.ExpressionTransformation(this);
+            this.ExpressionKinds = new ExtractNestedOperationCalls.ExpressionKindTransformation(this);
+        }
+
+        public class StatementTransformation
+        : StatementTransformation<TransformationsState>
+        {
+            public StatementTransformation(SyntaxTreeTransformation<TransformationsState> parent)
+            : base(parent)
+            {
+            }
+
+            public StatementTransformation(TransformationsState parent)
+            : base(parent)
+            {
+            }
+
+            public override QsScope OnScope(QsScope scope)
+            {
+                var statements = new List<QsStatement>();
+                foreach (var statement in scope.Statements)
+                {
+                    var transformed = this.OnStatement(statement);
+                    statements.AddRange(this.SharedState.AdditionalStatements);
+                    this.SharedState.AdditionalStatements.Clear();
+                    if (!(transformed.Statement is QsStatementKind.QsExpressionStatement expr &&
+                        expr.Item.Expression == ExpressionKind.UnitValue))
+                    {
+                        // Only add statements that are not free-floating Unit, which could have
+                        // been left behind by expression transformation.
+                        statements.Add(transformed);
+                    }
+                }
+                return new QsScope(statements.ToImmutableArray(), scope.KnownSymbols);
+            }
+        }
+
+        public class ExpressionTransformation
+        : ExpressionTransformation<TransformationsState>
+        {
+            public ExpressionTransformation(SyntaxTreeTransformation<TransformationsState> parent)
+            : base(parent, TransformationOptions.Default)
+            {
+            }
+
+            public ExpressionTransformation(TransformationsState parent)
+            : base(parent, TransformationOptions.Default)
+            {
+            }
+
+            public override TypedExpression OnTypedExpression(TypedExpression ex)
+            {
+                this.SharedState.CurrentExpression.Push(ex);
+                var newEx = base.OnTypedExpression(ex);
+                this.SharedState.CurrentExpression.Pop();
+                return newEx;
+            }
+        }
+
+        public class ExpressionKindTransformation
+        : ExpressionKindTransformation<TransformationsState>
+        {
+            public ExpressionKindTransformation(SyntaxTreeTransformation<TransformationsState> parent)
+            : base(parent)
+            {
+            }
+
+            public ExpressionKindTransformation(TransformationsState parent)
+            : base(parent)
+            {
+            }
+
+            public override ExpressionKind OnOperationCall(TypedExpression method, TypedExpression arg)
+            {
+                // An operation in an adjoint scope must return Unit, so extract the operation to be an
+                // an additional statement and then replace it with Unit.
+                var curExpression = this.SharedState.CurrentExpression.Peek();
+                this.SharedState.AdditionalStatements.Add(
+                    new QsStatement(
+                        QsStatementKind.NewQsExpressionStatement(
+                            new TypedExpression(
+                                base.OnOperationCall(method, arg),
+                                curExpression.TypeParameterResolutions.Select(x => Tuple.Create(x.Key.Item1, x.Key.Item2, x.Value)).ToImmutableArray(),
+                                curExpression.ResolvedType,
+                                curExpression.InferredInformation,
+                                curExpression.Range)),
+                        LocalDeclarations.Empty,
+                        QsNullable<QsLocation>.Null,
+                        QsComments.Empty));
+
+                return ExpressionKind.UnitValue;
+            }
         }
     }
 
