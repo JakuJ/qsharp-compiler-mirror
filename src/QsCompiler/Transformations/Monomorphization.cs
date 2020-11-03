@@ -217,6 +217,10 @@ namespace Microsoft.Quantum.QsCompiler.Transformations.Monomorphization
                 : base(new TransformationState(typeParams, getAccessModifiers))
             {
                 this.Namespaces = new NamespaceTransformation(this);
+                this.Statements = new StatementTransformation<TransformationState>(this);
+                this.StatementKinds = new StatementKindTransformation<TransformationState>(this);
+                this.Expressions = new ExpressionTransformation(this);
+                this.ExpressionKinds = new ExpressionKindTransformation<TransformationState>(this);
                 this.Types = new TypeTransformation(this);
             }
 
@@ -256,6 +260,19 @@ namespace Microsoft.Quantum.QsCompiler.Transformations.Monomorphization
                         s.ReturnType,
                         s.Information);
                     return base.OnSignature(s);
+                }
+            }
+
+            private class ExpressionTransformation : ExpressionTransformation<TransformationState>
+            {
+                public ExpressionTransformation(SyntaxTreeTransformation<TransformationState> parent) : base(parent)
+                {
+                }
+
+                public override ImmutableConcretization OnTypeParamResolutions(ImmutableConcretization typeParams)
+                {
+                    // We don't want to process the keys of type parameter resolutions
+                    return typeParams.ToImmutableDictionary(kvp => kvp.Key, kvp => this.Types.OnType(kvp.Value));
                 }
             }
 
