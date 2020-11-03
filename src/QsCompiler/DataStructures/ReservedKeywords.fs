@@ -275,7 +275,9 @@ module CommandLineArguments =
 
 /// contains specific names used within Q# dlls
 module DotnetCoreDll = 
+    [<Obsolete("Replaced by ResourceNameQsDataBondV1.")>]
     let ResourceName = "__qsharp_data__.bson"
+    let ResourceNameQsDataBondV1 = "__qsharp_data_bond_v1__.bson"
     let MetadataNamespace = "__qsharp__"
     let ReferenceAlias = "__qsharp_reference__"
     let MetadataType = "Metadata"
