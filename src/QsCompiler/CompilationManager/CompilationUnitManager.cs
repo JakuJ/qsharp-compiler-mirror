@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Quantum.QsCompiler.CompilationBuilder.DataStructures;
 using Microsoft.Quantum.QsCompiler.DataTypes;
 using Microsoft.Quantum.QsCompiler.ReservedKeywords;
+using Microsoft.Quantum.QsCompiler.SymbolManagement;
 using Microsoft.Quantum.QsCompiler.SyntaxProcessing;
 using Microsoft.Quantum.QsCompiler.SyntaxTokens;
 using Microsoft.Quantum.QsCompiler.SyntaxTree;
@@ -700,9 +701,8 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
         // -> if the query cannot be processed immediately, they simply return null
 
         /// <param name="suppressExceptionLogging">
-        /// Whether to suppress logging of exceptions from the query.
-        /// <para/>
-        /// NOTE: In debug mode, exceptions are always logged even if this parameter is true.
+        /// Whether to suppress logging of exceptions from the query. (In debug mode, exceptions are always logged even
+        /// if this parameter is true.)
         /// </param>
         internal T? FileQuery<T>(
             TextDocumentIdentifier? textDocument,
@@ -710,29 +710,30 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
             bool suppressExceptionLogging = false)
             where T : class
         {
-            T? TryQueryFile(FileContentManager f)
-            {
-                try
-                {
-                    return query(f, this.compilationUnit);
-                }
-                catch (Exception ex)
-                {
-                    #if DEBUG
-                    this.LogException(ex);
-                    #else
-                    if (!suppressExceptionLogging) this.LogException(ex);
-                    #endif
-                    return null;
-                }
-            }
-            if (textDocument?.Uri is null || !textDocument.Uri.IsAbsoluteUri || !textDocument.Uri.IsFile)
+#if DEBUG
+            suppressExceptionLogging = false;
+#endif
+            var uri = textDocument?.Uri;
+            var fileId = uri is null || !uri.IsAbsoluteUri || !uri.IsFile
+                ? null as NonNullable<string>?
+                : GetFileId(uri);
+            if (fileId is null || !this.fileContentManagers.TryGetValue(fileId.Value, out var file))
             {
                 return null;
             }
-            var docKey = GetFileId(textDocument.Uri);
-            var isSource = this.fileContentManagers.TryGetValue(docKey, out FileContentManager file);
-            return isSource ? TryQueryFile(file) : null;
+
+            try
+            {
+                return query(file, this.compilationUnit);
+            }
+            catch (Exception ex)
+            {
+                if (!suppressExceptionLogging)
+                {
+                    this.LogException(ex);
+                }
+            }
+            return null;
         }
 
         // routines giving read access to the compilation state (e.g. for the command line compiler, or testing/debugging)
