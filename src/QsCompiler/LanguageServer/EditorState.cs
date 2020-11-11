@@ -30,7 +30,6 @@ namespace Microsoft.Quantum.QsLanguageServer
 
         private readonly Action<PublishDiagnosticParams> publish;
         private readonly Action<string, Dictionary<string, string?>, Dictionary<string, int>> sendTelemetry;
-        private readonly Action<Uri>? onTemporaryProjectLoaded;
 
         /// <summary>
         /// needed to determine if the reality of a source file that has changed on disk is indeed given by the content on disk,
@@ -61,8 +60,7 @@ namespace Microsoft.Quantum.QsLanguageServer
             Action<PublishDiagnosticParams>? publishDiagnostics,
             Action<string, Dictionary<string, string?>, Dictionary<string, int>>? sendTelemetry,
             Action<string, MessageType>? log,
-            Action<Exception>? onException,
-            Action<Uri>? onTemporaryProjectLoaded)
+            Action<Exception>? onException)
         {
             this.ignoreEditorUpdatesForFiles = new ConcurrentDictionary<Uri, byte>();
             this.sendTelemetry = sendTelemetry ?? ((eventName, properties, measurements) => { });
@@ -87,7 +85,6 @@ namespace Microsoft.Quantum.QsLanguageServer
             this.projectLoader = projectLoader;
             this.projects = new ProjectManager(onException, log, this.publish);
             this.openFiles = new ConcurrentDictionary<Uri, FileContentManager>();
-            this.onTemporaryProjectLoaded = onTemporaryProjectLoaded;
         }
 
         /// <summary>
@@ -233,11 +230,42 @@ namespace Microsoft.Quantum.QsLanguageServer
             {
                 throw new ArgumentException("invalid text document identifier");
             }
+            // If the file is not associated with a project, we will create a temporary project file for all files in that folder.
+            // We spawn a second query below for the actual processing of the file to ensure that a created project file
+            // is properly registered with the project manager before processing.
+            var createdTemporaryProject = false;
+            this.projects.ManagerTaskAsync(textDocument.Uri, (manager, associatedWithProject) =>
+            {
+                if (this.IgnoreFile(textDocument.Uri))
+                {
+                    return;
+                }
+
+                if (!associatedWithProject && textDocument.Uri.LocalPath.EndsWith(".qs", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    try
+                    {
+                        var projectUri = this.QsTemporaryProjectLoader(textDocument.Uri, sdkVersion: null); // null means the Sdk version will be set to the extension version
+                        this.projects.LoadTemporaryProjectAsync(projectUri, this.QsProjectLoader, this.GetOpenFile);
+                        createdTemporaryProject = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        logError?.Invoke($"Failed to create temporary .csproj for {textDocument.Uri.LocalPath}.", MessageType.Info);
+                        manager.LogException(ex);
+                    }
+                }
+            }).Wait(); // needed to ensure that the LoadTemporaryProjectAsync is queued before the ManagerTaskAsync below
             _ = this.projects.ManagerTaskAsync(textDocument.Uri, (manager, associatedWithProject) =>
             {
                 if (this.IgnoreFile(textDocument.Uri))
                 {
                     return;
+                }
+
+                if (createdTemporaryProject && !associatedWithProject)	
+                {	
+                    logError?.Invoke($"Failed to load temporary .csproj for {textDocument.Uri.LocalPath}.", MessageType.Info);	
                 }
 
                 var newManager = CompilationUnitManager.InitializeFileManager(textDocument.Uri, textDocument.Text, this.publish, ex =>
