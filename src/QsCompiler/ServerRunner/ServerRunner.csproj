@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <LangVersion>8.0</LangVersion>
+        <OutputType>Exe</OutputType>
+        <PreserveCompilationReferences>true</PreserveCompilationReferences>
+        <PreserveCompilationContext>true</PreserveCompilationContext>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <StartAction>ServerRunner</StartAction>
+        <ExternalConsole>true</ExternalConsole>
+        <ApplicationURL>https://localhost:8091</ApplicationURL>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <ProjectReference Include="..\LanguageServer\LanguageServer.csproj" />
+    </ItemGroup>
+
+</Project>

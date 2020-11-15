@@ -64,11 +64,14 @@ namespace Microsoft.Quantum.QsLanguageServer
 
         // methods required for basic functionality
 
-        public QsLanguageServer(Stream sender, Stream reader)
+        private QsLanguageServer(JsonRpc rpc)
         {
             this.waitForInit = new ManualResetEvent(false);
-            this.rpc = new JsonRpc(sender, reader, this)
-            { SynchronizationContext = new QsSynchronizationContext() };
+
+            this.rpc = rpc;
+            rpc.SynchronizationContext = new QsSynchronizationContext();
+            rpc.AddLocalRpcTarget(this);
+
             this.rpc.StartListening();
             this.disconnectEvent = new ManualResetEvent(false);
             this.rpc.Disconnected += (object s, JsonRpcDisconnectedEventArgs e) => { this.disconnectEvent.Set(); }; // let's make the server exit if the stream is disconnected
@@ -99,6 +102,12 @@ namespace Microsoft.Quantum.QsLanguageServer
                 this.OnTemporaryProjectLoaded);
             this.waitForInit.Set();
         }
+
+        public QsLanguageServer(Stream sender, Stream reader)
+            : this(new JsonRpc(sender, reader)) { }
+
+        public QsLanguageServer(IJsonRpcMessageHandler jsonRpcMessageHandler)
+            : this(new JsonRpc(jsonRpcMessageHandler)) { }
 
         public void WaitForShutdown()
         {

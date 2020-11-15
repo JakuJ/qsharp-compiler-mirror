@@ -160,10 +160,11 @@ namespace Microsoft.Quantum.QsLanguageServer
         internal Uri QsTemporaryProjectLoader(Uri sourceFileUri, string sdkVersion)
         {
             var sourceFolderPath = Path.GetDirectoryName(sourceFileUri.LocalPath);
-            var projectFileName = string.Join("_x2f_", // arbitrary string to help avoid collisions
-                sourceFolderPath
-                    .Replace("_", "_x5f_") // arbitrary string to help avoid collisions
-                    .Split(Path.GetInvalidFileNameChars()));
+            // var projectFileName = string.Join("_x2f_", // arbitrary string to help avoid collisions
+            //     sourceFolderPath
+            //         .Replace("_", "_x5f_") // arbitrary string to help avoid collisions
+            //         .Split(Path.GetInvalidFileNameChars()));
+            var projectFileName = "_x2f_";
             var projectFolderPath = Directory.CreateDirectory(Path.Combine(
                 Path.GetTempPath(),
                 "qsharp",
