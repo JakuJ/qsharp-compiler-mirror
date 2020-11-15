@@ -1,9 +1,14 @@
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-alpine AS build
+ENV NUGET_VERSION=0.12.20100504
 WORKDIR /source
 
-# Restore Q# language server dependencies
+# Bootstrap the repository, filling templates etc.
 COPY qsharp-compiler-mirror/ qsharp-compiler-mirror/
-WORKDIR /source/qsharp-compiler-mirror/src/QsCompiler/ServerRunner
+WORKDIR qsharp-compiler-mirror
+RUN pwsh bootstrap.ps1
+
+# Restore Q# language server dependencies
+WORKDIR src/QsCompiler/ServerRunner
 RUN dotnet restore
 
 # Build the Q# language server
@@ -13,8 +18,10 @@ RUN dotnet build -c release --no-restore
 FROM build AS publish
 RUN dotnet publish -c release --no-build -o /app
 
-# Final image
+# Runtime image
 FROM mcr.microsoft.com/dotnet/sdk:3.1
+
+# Specify the entrypoint to the app
 WORKDIR /app
 COPY --from=publish /app .
 ENTRYPOINT ["dotnet", "ServerRunner.dll"]

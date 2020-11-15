@@ -280,7 +280,12 @@ namespace Microsoft.Quantum.QsLanguageServer
             {
                 return Task.CompletedTask;
             }
+
             var param = Utils.TryJTokenAs<DidOpenTextDocumentParams>(arg);
+
+            // HACK: Create an empty file with the provided URI so that the server "loads" it properly
+            using (File.Create(param.TextDocument.Uri.AbsolutePath)) { }
+
             return this.editorState.OpenFileAsync(
                 param.TextDocument,
                 this.ShowInWindow,

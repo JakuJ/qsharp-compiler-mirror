@@ -46,6 +46,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{B4A9484D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library2", "src\QsCompiler\TestTargets\Libraries\Library2\Library2.csproj", "{E7E019AB-42F8-48AB-B80C-D33351F2C96A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerRunner", "src\QsCompiler\ServerRunner\ServerRunner.csproj", "{EBB0FFD1-0576-4767-9C19-2F52076797F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -272,6 +274,18 @@ Global
 		{E7E019AB-42F8-48AB-B80C-D33351F2C96A}.Release|x64.Build.0 = Release|Any CPU
 		{E7E019AB-42F8-48AB-B80C-D33351F2C96A}.Release|x86.ActiveCfg = Release|Any CPU
 		{E7E019AB-42F8-48AB-B80C-D33351F2C96A}.Release|x86.Build.0 = Release|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Debug|x64.Build.0 = Debug|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Debug|x86.Build.0 = Debug|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Release|x64.ActiveCfg = Release|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Release|x64.Build.0 = Release|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Release|x86.ActiveCfg = Release|Any CPU
+		{EBB0FFD1-0576-4767-9C19-2F52076797F9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
