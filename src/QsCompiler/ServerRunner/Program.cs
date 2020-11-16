@@ -10,6 +10,7 @@ namespace ServerRunner
     {
         public static void Main(string[] args)
         {
+            // Note(JJ): This workaround makes the server work with our Docker configuration
             VisualStudioInstance vsi = MSBuildLocator.RegisterDefaults();
 
             // https://github.com/microsoft/qsharp-compiler/pull/566
@@ -27,7 +28,6 @@ namespace ServerRunner
 
         private static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>(); })
                 .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>().UseUrls("http://*:8091"); });
     }
 }

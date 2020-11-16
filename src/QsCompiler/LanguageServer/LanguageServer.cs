@@ -216,8 +216,27 @@ namespace Microsoft.Quantum.QsLanguageServer
             bool useTriggerCharWorkaround = this.ClientNameIs("VisualStudio") && !this.ClientVersionIsAtLeast(new Version(16, 4));
 
             var rootUri = param.RootUri ?? (Uri.TryCreate(param?.RootPath, UriKind.Absolute, out Uri uri) ? uri : null);
-            this.workspaceFolder = rootUri != null && rootUri.IsAbsoluteUri && rootUri.IsFile && Directory.Exists(rootUri.LocalPath) ? rootUri.LocalPath : null;
+
+            this.workspaceFolder = rootUri != null && rootUri.IsAbsoluteUri && rootUri.IsFile ? rootUri.LocalPath : null;
             this.LogToWindow($"workspace folder: {this.workspaceFolder ?? "(Null)"}", MessageType.Info);
+
+            // HACK: Create the temporary workspace folder and project
+            // We know that the file URIs sent from the client in the textDocument/didOpen
+            // notification will point to a file in this folder
+            if (!Directory.Exists(this.workspaceFolder))
+            {
+                Directory.CreateDirectory(this.workspaceFolder);
+                var projectFilePath = Path.Combine(this.workspaceFolder, "temporary.csproj");
+                using (var outputFile = new StreamWriter(projectFilePath))
+                {
+                    outputFile.WriteLine(
+                        TemporaryProject.GetFileContents(
+                            compilationScope: Path.Combine(this.workspaceFolder, "*.qs"),
+                            sdkVersion: null));
+                }
+                this.LogToWindow("Created a temporary wokspace", MessageType.Info);
+            }
+
             this.fileWatcher.ListenAsync(this.workspaceFolder, true, dict => this.InitializeWorkspaceAsync(dict), "*.csproj", "*.dll", "*.qs").Wait(); // not strictly necessary to wait but less confusing
 
             var capabilities = new ServerCapabilities
@@ -283,7 +302,7 @@ namespace Microsoft.Quantum.QsLanguageServer
 
             var param = Utils.TryJTokenAs<DidOpenTextDocumentParams>(arg);
 
-            // HACK: Create an empty file with the provided URI so that the server "loads" it properly
+            // HACK: Create an empty file with the provided URI so that the server finds it
             using (File.Create(param.TextDocument.Uri.AbsolutePath)) { }
 
             return this.editorState.OpenFileAsync(

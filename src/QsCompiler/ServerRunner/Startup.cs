@@ -8,7 +8,6 @@ using Microsoft.Extensions.Hosting;
 namespace ServerRunner
 {
     [SuppressMessage("Documentation", "SA1600", Justification = "Boilerplate")]
-    [ExcludeFromCodeCoverage]
     public class Startup
     {
         // This method gets called by the runtime. Use this method to add services to the container.
@@ -28,7 +27,7 @@ namespace ServerRunner
             app.UseWebSockets()
                .UseRouting()
                .UseEndpoints(endpoints => { endpoints.MapStreamJsonRpc("/monaco-editor"); })
-               .Run(async context => { await context.Response.WriteAsync("-- Demo.AspNetCore.StreamJsonRpc.Server.WebSocket --"); });
+               .Run(async context => { await context.Response.WriteAsync("-- You're looking for the WebSocket endpoint for the Q# Language Server on port 8091 --"); });
         }
     }
 }

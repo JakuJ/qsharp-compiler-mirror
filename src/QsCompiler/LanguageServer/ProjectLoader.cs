@@ -23,6 +23,8 @@ namespace Microsoft.Quantum.QsLanguageServer
     /// </summary>
     internal class ProjectLoader
     {
+        private static object buildLock = new object();
+
         public readonly Action<string, MessageType> Log;
 
         public ProjectLoader(Action<string, MessageType> log = null) =>
@@ -227,13 +229,18 @@ namespace Microsoft.Quantum.QsLanguageServer
             {
                 return null;
             }
+
             var loggers = new ILogger[] { new Utils.MSBuildLogger(this.Log) };
             int PreferSupportedFrameworks(string x, string y) => (this.IsSupportedQsFramework(y) ? 1 : 0) - (this.IsSupportedQsFramework(x) ? 1 : 0);
             var properties = this.DesignTimeBuildProperties(projectFile, out metadata, PreferSupportedFrameworks);
 
             // restore project (requires reloading the project after for the restore to take effect)
-            var succeed = LoadAndApply(projectFile, properties, project =>
-                project.CreateProjectInstance().Build("Restore", loggers));
+            bool succeed;
+            lock (buildLock)
+            {
+                succeed = LoadAndApply(projectFile, properties, project => project.CreateProjectInstance().Build("Restore", loggers));
+            }
+
             if (!succeed)
             {
                 this.Log($"Failed to restore project '{projectFile}'.", MessageType.Error);
@@ -243,7 +250,11 @@ namespace Microsoft.Quantum.QsLanguageServer
             return LoadAndApply(projectFile, properties, project =>
             {
                 var instance = project.CreateProjectInstance();
+                lock (buildLock)
+                {
                 succeed = instance.Build("ResolveAssemblyReferencesDesignTime", loggers);
+                }
+
                 if (!succeed)
                 {
                     this.Log($"Failed to resolve assembly references for project '{projectFile}'.", MessageType.Error);
