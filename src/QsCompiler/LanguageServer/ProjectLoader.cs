@@ -252,7 +252,7 @@ namespace Microsoft.Quantum.QsLanguageServer
                 var instance = project.CreateProjectInstance();
                 lock (buildLock)
                 {
-                succeed = instance.Build("ResolveAssemblyReferencesDesignTime", loggers);
+                    succeed = instance.Build("ResolveAssemblyReferencesDesignTime", loggers);
                 }
 
                 if (!succeed)

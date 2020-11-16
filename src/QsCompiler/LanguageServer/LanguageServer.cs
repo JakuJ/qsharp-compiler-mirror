@@ -234,7 +234,14 @@ namespace Microsoft.Quantum.QsLanguageServer
                             compilationScope: Path.Combine(this.workspaceFolder, "*.qs"),
                             sdkVersion: null));
                 }
-                this.LogToWindow("Created a temporary wokspace", MessageType.Info);
+
+                // HACK: Create an empty file that will match the URI provided in textDocument/didOpen
+                // Doing that in OnTextDocumentDidOpenAsync triggers the fileWatcher below
+                // resulting in the project loading twice
+                var dummyFile = Path.Combine(this.workspaceFolder, "_content_.qs");
+                File.Create(dummyFile).Dispose();
+
+                this.LogToWindow("Created a temporary workspace", MessageType.Info);
             }
 
             this.fileWatcher.ListenAsync(this.workspaceFolder, true, dict => this.InitializeWorkspaceAsync(dict), "*.csproj", "*.dll", "*.qs").Wait(); // not strictly necessary to wait but less confusing
@@ -301,9 +308,6 @@ namespace Microsoft.Quantum.QsLanguageServer
             }
 
             var param = Utils.TryJTokenAs<DidOpenTextDocumentParams>(arg);
-
-            // HACK: Create an empty file with the provided URI so that the server finds it
-            using (File.Create(param.TextDocument.Uri.AbsolutePath)) { }
 
             return this.editorState.OpenFileAsync(
                 param.TextDocument,
