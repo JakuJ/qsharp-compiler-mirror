@@ -22,12 +22,13 @@ namespace ServerRunner
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseRouting();
-
             app.UseWebSockets()
                .UseRouting()
                .UseEndpoints(endpoints => { endpoints.MapStreamJsonRpc("/monaco-editor"); })
-               .Run(async context => { await context.Response.WriteAsync("-- You're looking for the WebSocket endpoint for the Q# Language Server on port 8091 --"); });
+               .Run(async context =>
+                {
+                    await context.Response.WriteAsync("-- You're looking for the WebSocket endpoint for the Q# Language Server on port 8091 --");
+                });
         }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Runtime.Loader;
 using Microsoft.AspNetCore.Hosting;
@@ -28,6 +29,11 @@ namespace ServerRunner
 
         private static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>().UseUrls("http://*:8091"); });
+                .ConfigureWebHostDefaults(webBuilder =>
+                 {
+                     // This environment variable is set when running on Heroku
+                     string port = Environment.GetEnvironmentVariable("PORT") ?? "8091";
+                     webBuilder.UseStartup<Startup>().UseUrls($"http://*:{port}");
+                 });
     }
 }

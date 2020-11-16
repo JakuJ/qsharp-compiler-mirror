@@ -3,8 +3,7 @@ ENV NUGET_VERSION=0.12.20100504
 WORKDIR /source
 
 # Bootstrap the repository, filling templates etc.
-COPY qsharp-compiler-mirror/ qsharp-compiler-mirror/
-WORKDIR qsharp-compiler-mirror
+COPY . .
 RUN pwsh bootstrap.ps1
 
 # Restore Q# language server dependencies
