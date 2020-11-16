@@ -10,6 +10,7 @@ namespace Microsoft.Quantum.QsLanguageServer
         internal static string GetFileContents(string compilationScope, string? sdkVersion = null) => $@"
             <Project Sdk=""Microsoft.Quantum.Sdk/{sdkVersion ?? "#NUGET_VERSION#"}"">
                 <PropertyGroup>
+                    <OutputType>Exe</OutputType>
                     <TargetFramework>netstandard2.1</TargetFramework>
                 </PropertyGroup>
                 <ItemGroup>
