@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -22,7 +23,13 @@ namespace ServerRunner
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseWebSockets()
+            // Heroku closes connections that are inactive for more than 55 seconds
+            var webSocketOptions = new WebSocketOptions
+            {
+                KeepAliveInterval = TimeSpan.FromSeconds(45)
+            };
+
+            app.UseWebSockets(webSocketOptions)
                .UseRouting()
                .UseEndpoints(endpoints => { endpoints.MapStreamJsonRpc("/monaco-editor"); })
                .Run(async context =>
