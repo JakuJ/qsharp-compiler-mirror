@@ -20,6 +20,7 @@ using Microsoft.Quantum.QsCompiler.Transformations;
 using Microsoft.Quantum.QsCompiler.Transformations.BasicTransformations;
 using Microsoft.VisualStudio.LanguageServer.Protocol;
 using static Microsoft.Quantum.QsCompiler.ReservedKeywords.AssemblyConstants;
+using static Microsoft.Quantum.QsCompiler.CompilationBuilder.CompilationUnitManager;
 
 using MetadataReference = Microsoft.CodeAnalysis.MetadataReference;
 using OptimizationLevel = Microsoft.CodeAnalysis.OptimizationLevel;
@@ -214,6 +215,13 @@ namespace Microsoft.Quantum.QsCompiler
             /// If no paths are specified here or the sequence is null then this compilation step is omitted.
             /// </summary>
             public IEnumerable<string>? TargetPackageAssemblies;
+
+            /// <summary>
+            ///     If <c>true</c> forces compilation loading steps which
+            ///     support parallelization to use serial and synchronous
+            ///     execution instead.
+            /// </summary>
+            public bool? ForceSerial;
 
             /// <summary>
             /// Indicates whether a serialization of the syntax tree needs to be generated.
@@ -503,7 +511,11 @@ namespace Microsoft.Quantum.QsCompiler
 
             this.RaiseCompilationTaskStart("OverallCompilation", "Build");
             this.compilationStatus.Validation = Status.Succeeded;
-            var files = CompilationUnitManager.InitializeFileManagers(sourceFiles, null, this.OnCompilerException); // do *not* live track (i.e. use publishing) here!
+            var files = CompilationUnitManager.InitializeFileManagers(
+                sourceFiles,
+                null,
+                this.OnCompilerException,  // do *not* live track (i.e. use publishing) here!
+                degreeOfParallelism: options?.ForceSerial == true ? 1 : (int?)null);
             var processorArchitecture = this.config.AssemblyConstants?.GetValueOrDefault(AssemblyConstants.ProcessorArchitecture);
             var compilationManager = new CompilationUnitManager(
                 this.OnCompilerException,
@@ -514,7 +526,9 @@ namespace Microsoft.Quantum.QsCompiler
                     : processorArchitecture);
             compilationManager.UpdateReferencesAsync(references);
             compilationManager.AddOrUpdateSourceFilesAsync(files);
-            this.VerifiedCompilation = compilationManager.Build();
+            this.VerifiedCompilation = options?.ForceSerial == true
+                ? compilationManager.BuildSync()
+                : compilationManager.Build();
             this.CompilationOutput = this.VerifiedCompilation?.BuiltCompilation;
             compilationManager.Dispose();
 
