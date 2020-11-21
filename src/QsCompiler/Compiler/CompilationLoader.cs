@@ -20,6 +20,7 @@ using Microsoft.Quantum.QsCompiler.Transformations;
 using Microsoft.Quantum.QsCompiler.Transformations.BasicTransformations;
 using Microsoft.VisualStudio.LanguageServer.Protocol;
 using static Microsoft.Quantum.QsCompiler.ReservedKeywords.AssemblyConstants;
+using static Microsoft.Quantum.QsCompiler.CompilationBuilder.CompilationUnitManager;
 
 using MetadataReference = Microsoft.CodeAnalysis.MetadataReference;
 using OptimizationLevel = Microsoft.CodeAnalysis.OptimizationLevel;
@@ -503,7 +504,11 @@ namespace Microsoft.Quantum.QsCompiler
 
             this.RaiseCompilationTaskStart("OverallCompilation", "Build");
             this.compilationStatus.Validation = Status.Succeeded;
-            var files = CompilationUnitManager.InitializeFileManagers(sourceFiles, null, this.OnCompilerException); // do *not* live track (i.e. use publishing) here!
+            var files = CompilationUnitManager.InitializeFileManagers(
+                sourceFiles,
+                null,
+                this.OnCompilerException,  // do *not* live track (i.e. use publishing) here!
+                degreeOfParallelism: CompilationBuilder.Utils.IsWebAssembly == true ? 1 : (int?)null);
             var processorArchitecture = this.config.AssemblyConstants?.GetValueOrDefault(AssemblyConstants.ProcessorArchitecture);
             var compilationManager = new CompilationUnitManager(
                 this.OnCompilerException,

@@ -131,20 +131,31 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
         /// </summary>
         public void Dispose()
         {
-            // we need to flush on disposing, since otherwise we may end up with some queued or running tasks
-            // - or (global type checking) tasks spawned by those - trying to access disposed stuff
-            this.FlushAndExecute<object>(() =>
+            object? DoDispose()
             {
                 this.waitForTypeCheck?.Dispose();
                 this.compilationUnit.Dispose();
+
                 foreach (var file in this.fileContentManagers.Values)
                 {
                     // do *not* dispose of the FileContentManagers!
                     this.UnsubscribeFromFileManagerEvents(file);
                     this.PublishDiagnostics(new PublishDiagnosticParams { Uri = file.Uri, Diagnostics = Array.Empty<Diagnostic>() });
                 }
+
                 return null;
-            });
+            };
+
+            // we need to flush on disposing, since otherwise we may end up with some queued or running tasks
+            // - or (global type checking) tasks spawned by those - trying to access disposed stuff
+            if (!Utils.IsWebAssembly)
+            {
+                this.FlushAndExecute<object>(DoDispose);
+            }
+            else
+            {
+                DoDispose();
+            }
         }
 
         // routines related to tracking the source files
@@ -240,17 +251,30 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
         /// If an Action for publishing is given, publishes the diagnostics generated upon content processing.
         /// Throws an ArgumentException if any of the given uris is not an absolute file uri.
         /// </summary>
+        /// <param name="degreeOfParallelism">
+        ///     The degree of parallelism to use in initializing file managers.
+        ///     If <c>null</c>, the maximum of one ane one less than
+        ///     <see cref="System.Environment.ProcessorCount" /> will be used.
+        /// </param>
         public static ImmutableHashSet<FileContentManager> InitializeFileManagers(
             IDictionary<Uri, string> files,
             Action<PublishDiagnosticParams>? publishDiagnostics = null,
-            Action<Exception>? onException = null)
+            Action<Exception>? onException = null,
+            int? degreeOfParallelism = null)
         {
             if (files.Any(item => !item.Key.IsAbsoluteUri || !item.Key.IsFile))
             {
                 throw new ArgumentException("invalid TextDocumentIdentifier");
             }
             return files.AsParallel()
-                .WithDegreeOfParallelism(Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : Environment.ProcessorCount)
+                .WithDegreeOfParallelism(degreeOfParallelism switch
+                {
+                    {} n when n > 0 => n,
+                    {} n when n <= 0 =>
+                        throw new ArgumentException($"Degree of parallelism was {degreeOfParallelism}, but expected a positive number.",
+                            nameof(degreeOfParallelism)),
+                    null => Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : Environment.ProcessorCount
+                })
                 .WithExecutionMode(ParallelExecutionMode.ForceParallelism) // we are fine with a slower performance if the work is trivial
                 .Select(entry => InitializeFileManager(entry.Key, entry.Value, publishDiagnostics, onException))
                 .ToImmutableHashSet();
@@ -788,21 +812,29 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
 
         /// <summary>
         /// Returns a Compilation object containing all information about the current state of the compilation.
-        /// Note: this method waits for all currently running or queued tasks to finish
-        /// before constructing the Compilation object by calling FlushAndExecute.
         /// </summary>
-        public Compilation? Build() => this.FlushAndExecute(() =>
-        {
-            try
-            {
-                return new Compilation(this);
-            }
-            catch (Exception ex)
-            {
-                this.LogException(ex);
-                return null;
-            }
-        });
+        /// <remark>
+        /// This method waits for all currently running or queued tasks to finish
+        /// before constructing the Compilation object by calling FlushAndExecute.
+        ///
+        /// When running on WebAssembly, this method runs immediately.
+        /// </remark>
+        public Compilation? Build() =>
+            Utils.IsWebAssembly
+            // Don't wait on platforms that don't support waiting.
+            ? new Compilation(this)
+            : this.FlushAndExecute(() =>
+              {
+                  try
+                  {
+                      return new Compilation(this);
+                  }
+                  catch (Exception ex)
+                  {
+                      this.LogException(ex);
+                      return null;
+                  }
+              });
 
         /// <summary>
         /// Class used to accumulate all information about the state of a compilation unit in immutable form.
