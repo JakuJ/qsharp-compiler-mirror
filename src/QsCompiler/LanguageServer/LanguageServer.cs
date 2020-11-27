@@ -105,8 +105,8 @@ namespace Microsoft.Quantum.QsLanguageServer
             this.waitForInit.Set();
         }
 
-        public QsLanguageServer(Stream sender, Stream reader)
-            : this(new JsonRpc(sender, reader)) { }
+        public QsLanguageServer(Stream? sender, Stream? reader)
+            : this(new JsonRpc(sender!, reader!)) { }
 
         public QsLanguageServer(IJsonRpcMessageHandler jsonRpcMessageHandler)
             : this(new JsonRpc(jsonRpcMessageHandler)) { }
@@ -123,6 +123,9 @@ namespace Microsoft.Quantum.QsLanguageServer
             this.rpc.Dispose();
             this.disconnectEvent.Dispose();
             this.waitForInit?.Dispose();
+
+            // remove the workspace after we're done
+            Directory.Delete(this.workspaceFolder, true);
         }
 
         // some utils for server -> client communication
@@ -239,7 +242,7 @@ namespace Microsoft.Quantum.QsLanguageServer
             // HACK: Create the temporary workspace folder and project
             // We know that the file URIs sent from the client in the textDocument/didOpen
             // notification will point to a file in this folder
-            if (!Directory.Exists(this.workspaceFolder))
+            if (this.workspaceFolder != null && !Directory.Exists(this.workspaceFolder))
             {
                 Directory.CreateDirectory(this.workspaceFolder);
                 var projectFilePath = Path.Combine(this.workspaceFolder, "temporary.csproj");
