@@ -72,6 +72,8 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
             HelpText = "Specifies the classical capabilites of the runtime. Determines what QIR profile to compile to.")]
         public AssemblyConstants.RuntimeCapabilities RuntimeCapabilites { get; set; }
 
+        internal RuntimeCapability RuntimeCapability => this.RuntimeCapabilites.ToCapability();
+
         [Option(
             "build-exe",
             Required = false,
@@ -90,7 +92,8 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
             parsed = new Dictionary<string, string>();
             foreach (var keyValue in this.AdditionalAssemblyProperties ?? Array.Empty<string>())
             {
-                var pieces = keyValue?.Split(":");
+                // NB: We use `count: 2` here to ensure that assembly constants can contain colons.
+                var pieces = keyValue?.Split(":", count: 2);
                 success =
                     success && !(pieces is null) && pieces.Length == 2 &&
                     parsed.TryAdd(pieces[0].Trim().Trim('"'), pieces[1].Trim().Trim('"'));
@@ -252,16 +255,10 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
         /// </summary>
         private static readonly Uri SNIPPET_FILE_URI = new Uri(Path.GetFullPath("__CODE_SNIPPET__.qs"));
 
-        private static NonNullable<string> SNIPPET_FILE_ID
-        {
-            get
-            {
-                QsCompilerError.Verify(
-                    CompilationUnitManager.TryGetFileId(SNIPPET_FILE_URI, out NonNullable<string> id),
-                    "invalid code snippet id");
-                return id;
-            }
-        }
+        private static string SNIPPET_FILE_ID =>
+            QsCompilerError.RaiseOnFailure(
+                () => CompilationUnitManager.GetFileId(SNIPPET_FILE_URI),
+                "invalid code snippet id");
 
         /// <summary>
         /// name of the namespace within which code snippets are compiled
@@ -286,8 +283,7 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
         /// <summary>
         /// Helper function that returns true if the given file id is consistent with the one for a code snippet.
         /// </summary>
-        public static bool IsCodeSnippet(NonNullable<string> fileId) =>
-            fileId.Value == SNIPPET_FILE_ID.Value;
+        public static bool IsCodeSnippet(string fileId) => fileId == SNIPPET_FILE_ID;
 
         /// <summary>
         /// Returns a function that given a routine for loading files from disk,
@@ -298,17 +294,17 @@ namespace Microsoft.Quantum.QsCompiler.CommandLineCompiler
         /// </summary>
         internal CompilationLoader.SourceLoader LoadSourcesOrSnippet(ILogger logger) => loadFromDisk =>
         {
-            bool inputIsEmptyOrNull = this.Input == null || !this.Input.Any();
-            if (this.CodeSnippet == null && !inputIsEmptyOrNull)
+            var input = this.Input ?? Enumerable.Empty<string>();
+            if (this.CodeSnippet == null && input.Any())
             {
-                return loadFromDisk(this.Input);
+                return loadFromDisk(input);
             }
-            else if (this.CodeSnippet != null && inputIsEmptyOrNull)
+            else if (this.CodeSnippet != null && !input.Any())
             {
                 return new Dictionary<Uri, string> { { SNIPPET_FILE_URI, AsSnippet(this.CodeSnippet, this.WithinFunction) } }.ToImmutableDictionary();
             }
 
-            if (inputIsEmptyOrNull)
+            if (!input.Any())
             {
                 logger?.Log(ErrorCode.MissingInputFileOrSnippet, Enumerable.Empty<string>());
             }
