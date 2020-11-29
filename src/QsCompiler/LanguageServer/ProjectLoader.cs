@@ -191,7 +191,9 @@ namespace Microsoft.Quantum.QsLanguageServer
                 // Unloading the project unloads the project but *doesn't* clear the cache to be resilient to inconsistent states.
                 // Hence we actually need to unload all projects, which does make sure the cache is cleared and changes on disk are reflected.
                 // See e.g. https://github.com/Microsoft/msbuild/issues/795
-                ProjectCollection.GlobalProjectCollection.UnloadAllProjects(); // needed due to the caching behavior of MS build
+
+                // HACK: Commenting the line below out fixes race conditions which would result in syntax-only support
+                // ProjectCollection.GlobalProjectCollection.UnloadAllProjects(); // needed due to the caching behavior of MS build
                 project = new Project(projectFile, properties, ToolLocationHelper.CurrentToolsVersion);
                 return query(project);
             }
