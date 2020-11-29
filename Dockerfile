@@ -20,6 +20,10 @@ RUN dotnet publish -c release --no-build -o /app
 # Runtime image
 FROM mcr.microsoft.com/dotnet/sdk:3.1
 
+# Set ASP.NET Core runtime environment
+ARG ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+
 # Specify the entrypoint to the app
 WORKDIR /app
 COPY --from=publish /app .
