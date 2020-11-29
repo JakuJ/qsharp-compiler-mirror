@@ -11,13 +11,10 @@ namespace ServerRunner
     {
         public static void Main(string[] args)
         {
-            // Note(JJ): This workaround makes the server work with our Docker configuration
+            // This workaround makes the server work with our Docker configuration
+            // Taken from ../LanguageServer/Program.cs
             VisualStudioInstance vsi = MSBuildLocator.RegisterDefaults();
 
-            // https://github.com/microsoft/qsharp-compiler/pull/566
-            // We're using the installed version of the binaries to avoid a dependency between
-            // the .NET Core SDK version and NuGet. This is a workaround due to the issue below:
-            // https://github.com/microsoft/MSBuildLocator/issues/86
             AssemblyLoadContext.Default.Resolving += (assemblyLoadContext, assemblyName) =>
             {
                 string path = Path.Combine(vsi.MSBuildPath, assemblyName.Name + ".dll");
@@ -31,9 +28,22 @@ namespace ServerRunner
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                  {
-                     // This environment variable is set when running on Heroku
-                     string port = Environment.GetEnvironmentVariable("PORT") ?? "8091";
-                     webBuilder.UseStartup<Startup>().UseUrls($"http://*:{port}");
+                     webBuilder.UseStartup<Startup>();
+
+                     string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
+                     switch (environment)
+                     {
+                         case "Staging":
+                             string port = Environment.GetEnvironmentVariable("PORT")!; // provided by the platform, never null
+                             webBuilder.UseUrls($"http://*:{port}");                    // https is managed automatically
+                             break;
+                         case "Production":
+                             webBuilder.UseUrls("http://*:80", "https://*:443"); // production defaults
+                             break;
+                         case "Development":
+                             webBuilder.UseUrls("http://*:8091"); // default port for local development
+                             break;
+                     }
                  });
     }
 }
