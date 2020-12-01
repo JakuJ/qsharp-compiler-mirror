@@ -7,7 +7,7 @@ COPY . .
 RUN pwsh bootstrap.ps1
 
 # Restore Q# language server dependencies
-WORKDIR src/QsCompiler/ServerRunner
+WORKDIR src/QsCompiler/WebSocketServer
 RUN dotnet restore
 
 # Build the Q# language server
@@ -27,4 +27,4 @@ ENV ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
 # Specify the entrypoint to the app
 WORKDIR /app
 COPY --from=publish /app .
-ENTRYPOINT ["dotnet", "ServerRunner.dll"]
+ENTRYPOINT ["dotnet", "WebSocketServer.dll"]

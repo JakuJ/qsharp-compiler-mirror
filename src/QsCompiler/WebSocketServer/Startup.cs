@@ -2,11 +2,10 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace ServerRunner
+namespace WebSocketServer
 {
     [SuppressMessage("Documentation", "SA1600", Justification = "Boilerplate")]
     public class Startup
@@ -15,12 +14,12 @@ namespace ServerRunner
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            if (env.IsStaging())
+            if (env.IsDevelopment())
             {
                 // Heroku closes connections that are inactive for more than 55 seconds
                 var webSocketOptions = new WebSocketOptions
                 {
-                    KeepAliveInterval = TimeSpan.FromSeconds(50)
+                    KeepAliveInterval = TimeSpan.FromSeconds(50),
                 };
 
                 app.UseWebSockets(webSocketOptions);
