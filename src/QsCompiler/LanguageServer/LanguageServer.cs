@@ -216,6 +216,14 @@ namespace Microsoft.Quantum.QsLanguageServer
                 return new InitializeError { Retry = true };
             }
 
+            // HACK: Fix windows path separators
+            var rootUriRepl = arg.SelectToken("rootUri").Value<string>();
+            if (rootUriRepl != null)
+            {
+                rootUriRepl = rootUriRepl.Replace("file:///%5C", "file:///").Replace("%5C", "/");
+                arg.SelectToken("rootUri").Replace(rootUriRepl);
+            }
+
             arg.SelectToken("capabilities.textDocument.codeAction")?.Replace(null); // setting this to null for now, since we are not using it and the deserialization causes issues
             var param = Utils.TryJTokenAs<InitializeParams>(arg);
             this.clientCapabilities = param.Capabilities;
