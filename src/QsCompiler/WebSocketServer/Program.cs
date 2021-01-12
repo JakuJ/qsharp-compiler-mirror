@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Build.Locator;
 using Microsoft.Extensions.Hosting;
 
-namespace ServerRunner
+namespace WebSocketServer
 {
     public class Program
     {
@@ -33,15 +33,13 @@ namespace ServerRunner
                      string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
                      switch (environment)
                      {
-                         case "Staging":
-                             string port = Environment.GetEnvironmentVariable("PORT")!; // provided by the platform, never null
-                             webBuilder.UseUrls($"http://*:{port}");                    // https is managed automatically
+                         case "Development":
+                             // the PORT variable is provided by Heroku, 8091 is for local development
+                             string port = Environment.GetEnvironmentVariable("PORT") ?? "8091";
+                             webBuilder.UseUrls($"http://*:{port}");
                              break;
                          case "Production":
-                             webBuilder.UseUrls("http://*:80", "https://*:443"); // production defaults
-                             break;
-                         case "Development":
-                             webBuilder.UseUrls("http://*:8091"); // default port for local development
+                             webBuilder.UseUrls("http://*:80", "https://*:443");
                              break;
                      }
                  });

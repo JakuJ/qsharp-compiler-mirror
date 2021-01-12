@@ -4,11 +4,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Quantum.QsLanguageServer;
 using StreamJsonRpc;
 
-namespace ServerRunner
+namespace WebSocketServer
 {
     internal class StreamJsonRpcMiddleware
     {
-        public StreamJsonRpcMiddleware(RequestDelegate next) { }
+        public StreamJsonRpcMiddleware(RequestDelegate _) { }
 
         public async Task Invoke(HttpContext context)
         {
@@ -17,7 +17,7 @@ namespace ServerRunner
                 WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
                 var jsonRpcMessageHandler = new WebSocketMessageHandler(webSocket);
 
-                QsLanguageServer server = new QsLanguageServer(jsonRpcMessageHandler);
+                var server = new QsLanguageServer(jsonRpcMessageHandler);
                 server.WaitForShutdown();
             }
             else
