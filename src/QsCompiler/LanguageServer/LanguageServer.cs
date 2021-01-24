@@ -133,8 +133,15 @@ namespace Microsoft.Quantum.QsLanguageServer
         internal Task NotifyClientAsync(string method, object args) =>
             this.rpc.NotifyWithParameterObjectAsync(method, args);  // no need to wait for completion
 
-        internal Task PublishDiagnosticsAsync(PublishDiagnosticParams diagnostics) =>
-            this.NotifyClientAsync(Methods.TextDocumentPublishDiagnosticsName, diagnostics);
+        internal Task PublishDiagnosticsAsync(PublishDiagnosticParams diagnostics)
+        {
+            // HACK: Hide source in diagnostics
+            foreach (var d in diagnostics.Diagnostics)
+            {
+                d.Source = "";
+            }
+            return this.NotifyClientAsync(Methods.TextDocumentPublishDiagnosticsName, diagnostics);
+        }
 
         /// <summary>
         /// does not actually do anything unless the corresponding flag is defined upon compilation
