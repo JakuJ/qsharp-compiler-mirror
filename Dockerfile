@@ -1,5 +1,5 @@
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1-alpine AS build
-ENV NUGET_VERSION=0.14.2011120240
+ENV NUGET_VERSION=0.15.2103133969
 WORKDIR /source
 
 # Bootstrap the repository, filling templates etc.

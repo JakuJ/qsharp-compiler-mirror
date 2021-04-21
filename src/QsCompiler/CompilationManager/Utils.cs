@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 using System;
@@ -168,8 +168,10 @@ namespace Microsoft.Quantum.QsCompiler.CompilationBuilder
         /// <summary>
         /// Converts the Q# compiler position into a language server protocol position.
         /// </summary>
-        public static Lsp.Position ToLsp(this Position position) =>
-            new Lsp.Position(position.Line, position.Column);
+        public static Lsp.Position ToLsp(this Position? position) =>
+            position == null
+            ? new Lsp.Position()
+            : new Lsp.Position(position.Line, position.Column);
 
         /// <summary>
         /// Converts the language server protocol range into a Q# compiler range.
