@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 using System;
@@ -16,8 +16,6 @@ using Range = Microsoft.Quantum.QsCompiler.DataTypes.Range;
 namespace Microsoft.Quantum.QsCompiler.Transformations.FunctorGeneration
 {
     using ExpressionKind = QsExpressionKind<TypedExpression, Identifier, ResolvedType>;
-    using ResolvedTypeKind = QsTypeKind<ResolvedType, UserDefinedType, QsTypeParameter, CallableInformation>;
-    using TypeArgsResolution = ImmutableArray<Tuple<QsQualifiedName, string, ResolvedType>>;
 
     /// <summary>
     /// Scope transformation that replaces each operation call within a given scope
@@ -305,7 +303,7 @@ namespace Microsoft.Quantum.QsCompiler.Transformations.FunctorGeneration
                 foreach (var statement in scope.Statements)
                 {
                     var transformed = this.OnStatement(statement);
-                    if (this.SubSelector?.SharedState.SatisfiesCondition ?? false)
+                    if (this.subSelector?.SharedState.SatisfiesCondition ?? false)
                     {
                         topStatements.Add(statement);
                     }
