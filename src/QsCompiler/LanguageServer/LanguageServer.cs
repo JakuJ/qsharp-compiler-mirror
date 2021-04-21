@@ -261,11 +261,11 @@ namespace Microsoft.Quantum.QsLanguageServer
             }
 
             // HACK: Fix windows path separators
-            var rootUriRepl = arg.SelectToken("rootUri").Value<string>();
+            string? rootUriRepl = arg.SelectToken("rootUri")?.Value<string>();
             if (rootUriRepl != null)
             {
                 rootUriRepl = rootUriRepl.Replace("file:///%5C", "file:///").Replace("%5C", "/");
-                arg.SelectToken("rootUri").Replace(rootUriRepl);
+                arg.SelectToken("rootUri")!.Replace(rootUriRepl);
             }
 
             // setting this to null for now, since we are not using it and the deserialization causes issues
@@ -291,7 +291,7 @@ namespace Microsoft.Quantum.QsLanguageServer
             bool useTriggerCharWorkaround = this.ClientNameIs("VisualStudio") && !this.ClientVersionIsAtLeast(new Version(16, 4));
 
             var rootUri = param?.RootUri ?? (Uri.TryCreate(param?.RootPath, UriKind.Absolute, out var uri) ? uri : null);
-            this.workspaceFolder = rootUri != null && rootUri.IsAbsoluteUri && rootUri.IsFile && Directory.Exists(rootUri.LocalPath) ? rootUri.LocalPath : null;
+            this.workspaceFolder = rootUri != null && rootUri.IsAbsoluteUri && rootUri.IsFile ? rootUri.LocalPath : null;
             this.LogToWindow($"workspace folder: {this.workspaceFolder ?? "(Null)"}", MessageType.Info);
 
             // HACK: Create the temporary workspace folder and project

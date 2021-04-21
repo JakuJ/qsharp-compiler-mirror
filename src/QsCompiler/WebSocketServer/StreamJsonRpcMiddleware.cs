@@ -10,7 +10,7 @@ namespace WebSocketServer
     {
         public StreamJsonRpcMiddleware(RequestDelegate _) { }
 
-        public async Task Invoke(HttpContext context)
+        public async Task InvokeAsync(HttpContext context)
         {
             if (context.WebSockets.IsWebSocketRequest)
             {
