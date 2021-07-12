@@ -1,6 +1,6 @@
 # Language server for the Quantum Explorer
 
-This repository contains code behind the WebSocket-based language server for Q#.
+This repository contains code behind the WebSocket-based language server for Q#, used by the [Quantum Exlorer](https://github.com/JakuJ/quantum-explorer) app.
 It's built upon a mirror of the [qsharp-compiler](https://github.com/microsoft/qsharp-compiler) repository by Microsoft.
 Our code is located mostly at `src/QsCompiler/WebSocketServer`, with some modifications done to the original code as well.
 
@@ -26,7 +26,7 @@ the [Dockerfile](./Dockerfile)).
 NUGET_VERSION=0.15.2103133969 pwsh bootstrap.ps1
 
 # On Windows, in Powershell
-$Env:NUGET_VERSION=0.14.2011120240
+$Env:NUGET_VERSION=0.15.2103133969
 bootstrap.ps1
 
 # build and run the Language Server afterwards
@@ -45,7 +45,7 @@ docker run -p 8091:8091 -t language-server
 
 # Deployment
 
-We use two versions of the app deployed at all times to the cloud(s).
+The app is meant for two environments - development (Heroku) and production (Azure).
 
 ## Development
 
@@ -60,7 +60,7 @@ The runtime config involves setting **config vars** as follows:
 
 ## Production
 
-The production version of the app, is deployed to an Azure Web App for Containers running
+The production version of the app, used to be deployed to an Azure Web App for Containers running
 at https://language-server.azurewebsites.net.
 
 The deployment is performed manually by pushing the Docker container (or rather, its build context, the build is remote) to Azure Container Repository (ACR).
